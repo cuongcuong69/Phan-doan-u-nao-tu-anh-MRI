@@ -1,4 +1,23 @@
-# Tiền xử lý dữ liệu
+# Công việc
+## 1. Thu thập và xử lý dữ liệu:
+- [ ] Tiền xử lý: Crop, nomalize, chia thành các lát cắt 2D nếu dùng mô hình 2D. Thực hiện các biện pháp tăng cường dữ liệu (giữa kì)
+- [ ] Thu thập, bổ sung thêm một số mẫu dữ liệu cùng loại, cùng bài toán $\to$ thực hiện thao tác tiền xử lý để chuẩn bị cho các phần sau (giữa kì)
+- [ ] Thực hiện thống kê, phân tích trên bộ dữ liệu, trực quan hóa phân bố của dữ liệu (giữa kì
+## 2. Xây dựng mô hình
+- [ ] Mô hình: Sử dụng $\ge$ 3 mô hình để giải quyết bài toán (giữa kì báo cáo ít nhất 1 mô hình)
+	- [ ] Mô hình 1:
+	- [ ] Mô hình 2:
+	- [ ] Mô hình 3:
+- [ ] Huấn luyện với Dice Loss và Dice Loss + CE loss
+## 3. Đánh giá mô hình
+- [ ] Sử dụng Dice, IoU, ASD, HD95
+- [ ] Inference trên tập test và overlay với GT
+## 3. Trình bày kết quả
+- [ ] Hiển thị ảnh đầu vào, phân vùng thực và phân vùng dự đoán
+- [ ] Viết báo cáo mô tả toàn bộ pipeline
+
+
+# Chi tiết: Tiền xử lý dữ liệu
 `scripts\preprocess_brats2d_version2.py`
 1. Dò bounding box toàn cục trên T1 (train + val)
 	- Đọc T1 $\to$ đưa về RAS

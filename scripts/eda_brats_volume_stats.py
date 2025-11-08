@@ -8,21 +8,23 @@ Tính cho từng ca (training – có nhãn):
 - Thể tích mm^3 = voxel_count * voxel_volume (mm^3); mL = mm^3 / 1000
 - % mỗi vùng so với thể tích não (binarize từ T1: T1>0) theo từng ca.
 
+Tuỳ chọn:
+- --by_grade: nếu bật, phân tích theo 3 nhóm: ALL, HGG, LGG (dựa vào name_mapping.csv / cột 'Grade').
+
 Xuất:
-- CSV thống kê per-case
+- CSV thống kê per-case (+ cột Grade nếu có)
 - Biểu đồ:
   (1) Histogram WT/TC/ET (mL)
   (2) Violin plot WT/TC/ET (mL)
-  (3) Pie chart trung bình % WT–TC–ET (lưu ý: WT/TC/ET là tập chồng lấn; pie chỉ minh hoạ xu hướng)
+  (3) Pie chart trung bình % WT–TC–ET (chồng lấn; chỉ minh hoạ)
   (4) Scatter plot (ED vs ET) (mL)
 
 Yêu cầu:
     pip install nibabel numpy pandas matplotlib tqdm
-
-Mặc định đường dẫn theo cấu trúc dự án bạn đã mô tả.
 """
 
 import os
+import argparse
 from pathlib import Path
 import re
 import numpy as np
@@ -36,7 +38,7 @@ from tqdm import tqdm
 RAW_TRAIN = r"D:\Project Advanced CV\data\BraST2020\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData"
 OUT_DIR   = r"D:\Project Advanced CV\experiments\eda"
 
-# Tên file xuất
+# Tên file xuất (dùng cho từng nhóm)
 CSV_OUT         = "brats_volume_stats.csv"
 HIST_FIG_OUT    = "hist_WT_TC_ET_ml.png"
 VIOLIN_FIG_OUT  = "violin_WT_TC_ET_ml.png"
@@ -45,7 +47,7 @@ SCATTER_FIG_OUT = "scatter_ED_vs_ET_ml.png"
 # ---------------------------------------
 
 
-def as_ras_data(fp: Path) -> np.ndarray:
+def as_ras_data(fp: Path):
     img = nib.load(str(fp))
     img = nib.as_closest_canonical(img)
     return img.get_fdata(dtype=np.float32), img.header.get_zooms()
@@ -55,6 +57,42 @@ def find_case_id(name: str) -> str:
     # BraTS20_Training_123 -> '123'
     m = re.search(r"_(\d+)$", name)
     return m.group(1) if m else name
+
+
+def load_grade_mapping(train_root: str) -> dict:
+    """
+    Đọc name_mapping.csv trong thư mục RAW_TRAIN.
+    Kỳ vọng có cột 'Grade' (HGG/LGG) và cột chứa tên ca tương ứng với folder (thường là 'BraTS_2020_subject_ID').
+    Ta sẽ cố gắng tìm cột tên ca: ưu tiên 'BraTS_2020_subject_ID', fallback 'Subject_ID' hoặc 'name'.
+    """
+    csv_path = Path(train_root) / "name_mapping.csv"
+    if not csv_path.exists():
+        print(f"[WARN] name_mapping.csv not found at {csv_path}. Grade analysis will be skipped.")
+        return {}
+
+    df = pd.read_csv(csv_path)
+    col_candidates = [c for c in df.columns if str(c).lower() in ["brats_2020_subject_id", "subject_id", "name", "case", "id"]]
+    if not col_candidates:
+        # cố gắng đoán cột có dạng BraTS20_Training_xxx
+        for c in df.columns:
+            if df[c].astype(str).str.contains("BraTS20_Training_").any():
+                col_candidates.append(c)
+                break
+    if not col_candidates:
+        raise ValueError("Không tìm thấy cột chứa subject ID trong name_mapping.csv")
+
+    id_col = col_candidates[0]
+    if "Grade" not in df.columns:
+        raise ValueError("Không tìm thấy cột 'Grade' trong name_mapping.csv")
+
+    mapping = {}
+    for _, r in df.iterrows():
+        k = str(r[id_col]).strip()
+        g = str(r["Grade"]).strip().upper()
+        # chuẩn hoá key giống tên folder
+        # ví dụ: 'BraTS20_Training_001'
+        mapping[k] = g
+    return mapping
 
 
 def compute_case_stats(case_dir: Path) -> dict:
@@ -67,15 +105,10 @@ def compute_case_stats(case_dir: Path) -> dict:
         return {}
 
     seg, seg_zooms = as_ras_data(seg_fp)   # seg là 0/1/2/4
-    t1,  t1_zooms  = as_ras_data(t1_fp)
-
-    # Kiểm tra kích thước
-    if seg.shape != t1.shape:
-        # vẫn tiếp tục vì ta chỉ đếm theo từng volume; nhưng cảnh báo
-        print(f"[WARN] Shape mismatch at {name}: seg {seg.shape} vs t1 {t1.shape}")
+    t1,  _         = as_ras_data(t1_fp)
 
     # Voxel volume (mm^3)
-    vx_vol_mm3 = float(np.prod(seg_zooms))  # BraTS đã resample đồng nhất, nhưng vẫn lấy từ header
+    vx_vol_mm3 = float(np.prod(seg_zooms))
 
     # Voxel count theo nhãn
     n1 = int(np.sum(seg == 1))
@@ -137,12 +170,14 @@ def collect_all_cases(raw_train: str) -> pd.DataFrame:
         if s:
             rows.append(s)
     df = pd.DataFrame(rows)
-    df.sort_values("id", inplace=True)
+    if not df.empty:
+        df["id"] = df["id"].astype(str)
+        df.sort_values("id", inplace=True)
     return df
 
 
 def make_histograms(df: pd.DataFrame, out_dir: Path):
-    # WT / TC / ET (mL), mỗi ảnh 1 histogram riêng cho rõ ràng
+    # WT / TC / ET (mL)
     for col, fname in [("volWT_ml", "hist_WT_ml.png"),
                        ("volTC_ml", "hist_TC_ml.png"),
                        ("volET_ml", "hist_ET_ml.png")]:
@@ -155,7 +190,7 @@ def make_histograms(df: pd.DataFrame, out_dir: Path):
         plt.savefig(out_dir / fname, dpi=200)
         plt.close()
 
-    # (Tuỳ chọn) ảnh tổng hợp 3 histogram cùng lúc: tạo thêm nếu cần
+    # Tổng hợp 3 histogram
     plt.figure()
     plt.hist(df["volWT_ml"].dropna(), bins=30, alpha=0.5, label="WT")
     plt.hist(df["volTC_ml"].dropna(), bins=30, alpha=0.5, label="TC")
@@ -174,7 +209,7 @@ def make_violin(df: pd.DataFrame, out_path: Path):
             df["volTC_ml"].dropna().values,
             df["volET_ml"].dropna().values]
     plt.figure()
-    parts = plt.violinplot(data, showmeans=True, showextrema=True, showmedians=True)
+    _ = plt.violinplot(data, showmeans=True, showextrema=True, showmedians=True)
     plt.xticks([1,2,3], ["WT (mL)", "TC (mL)", "ET (mL)"])
     plt.title("Violin plot of WT / TC / ET volumes")
     plt.tight_layout()
@@ -184,9 +219,7 @@ def make_violin(df: pd.DataFrame, out_path: Path):
 
 def make_pie_mean_pct(df: pd.DataFrame, out_path: Path):
     """
-    Pie chart trung bình % WT–TC–ET so với thể tích não.
-    LƯU Ý: WT, TC, ET chồng lấn định nghĩa — pie chỉ để minh hoạ mức độ trung bình,
-    KHÔNG phải phân hoạch không chồng lấn.
+    Pie chart trung bình % WT–TC–ET so với thể tích não (chồng lấn).
     """
     mean_wt = float(df["pctWT_brain"].mean())
     mean_tc = float(df["pctTC_brain"].mean())
@@ -203,13 +236,9 @@ def make_pie_mean_pct(df: pd.DataFrame, out_path: Path):
 
 
 def make_scatter_ed_vs_et(df: pd.DataFrame, out_path: Path):
-    x = df["vol2_ml"].dropna().values  # ED
-    y = df["vol4_ml"].dropna().values  # ET
-    # Đồng bộ index (tránh lệch nếu có NaN rải rác)
     sub = df[["vol2_ml", "vol4_ml"]].dropna()
-    x = sub["vol2_ml"].values
-    y = sub["vol4_ml"].values
-
+    x = sub["vol2_ml"].values  # ED
+    y = sub["vol4_ml"].values  # ET
     plt.figure()
     plt.scatter(x, y, s=16)
     plt.xlabel("ED volume (mL)")
@@ -221,28 +250,75 @@ def make_scatter_ed_vs_et(df: pd.DataFrame, out_path: Path):
     plt.close()
 
 
+def run_one_group(df: pd.DataFrame, out_dir_group: Path):
+    out_dir_group.mkdir(parents=True, exist_ok=True)
+    # Lưu CSV
+    df.to_csv(out_dir_group / CSV_OUT, index=False)
+    # Vẽ biểu đồ
+    make_histograms(df, out_dir_group)
+    make_violin(df, out_dir_group / VIOLIN_FIG_OUT)
+    make_pie_mean_pct(df, out_dir_group / PIE_FIG_OUT)
+    make_scatter_ed_vs_et(df, out_dir_group / SCATTER_FIG_OUT)
+
+
 def main():
-    out_dir = Path(OUT_DIR)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--raw_train", type=str, default=RAW_TRAIN)
+    ap.add_argument("--out_dir",   type=str, default=OUT_DIR)
+    ap.add_argument("--by_grade",  action="store_true", help="Phân tích theo Grade (HGG/LGG) + ALL")
+    args = ap.parse_args()
 
-    # 1) Thu thập thống kê
-    df = collect_all_cases(RAW_TRAIN)
-    # 2) Lưu CSV
-    df.to_csv(out_dir / CSV_OUT, index=False)
+    out_root = Path(args.out_dir)
+    out_root.mkdir(parents=True, exist_ok=True)
 
-    # 3) Biểu đồ Histogram
-    make_histograms(df, out_dir)
+    # 1) Thu thập thống kê chung
+    df_all = collect_all_cases(args.raw_train)
 
-    # 4) Violin plot WT/TC/ET
-    make_violin(df, out_dir / VIOLIN_FIG_OUT)
+    if df_all.empty:
+        print("[ERROR] Không có dữ liệu nào được đọc. Kiểm tra đường dẫn RAW_TRAIN.")
+        return
 
-    # 5) Pie chart mean % WT-TC-ET
-    make_pie_mean_pct(df, out_dir / PIE_FIG_OUT)
+    if not args.by_grade:
+        # Phân tích chung (như bản cũ)
+        print("[INFO] Running aggregated analysis (ALL). Use --by_grade để tách HGG/LGG.")
+        run_one_group(df_all, out_root)
+        print(f"[OK] Saved (ALL) to: {out_root}")
+        return
 
-    # 6) Scatter ED vs ET
-    make_scatter_ed_vs_et(df, out_dir / SCATTER_FIG_OUT)
+    # 2) Ghép Grade từ name_mapping.csv
+    try:
+        grade_map = load_grade_mapping(args.raw_train)
+    except Exception as e:
+        print(f"[WARN] Không thể đọc/ghép Grade ({e}). Chạy phân tích chung.")
+        run_one_group(df_all, out_root)
+        return
 
-    print(f"[OK] Saved CSV & figures to: {out_dir}")
+    # Chuẩn hoá key để khớp: dùng tên folder 'case'
+    # name_mapping thường có key đúng bằng tên folder (BraTS20_Training_xxx).
+    df_all["Grade"] = df_all["case"].map(lambda k: grade_map.get(k, np.nan))
+
+    # Báo các case không có Grade
+    missing = df_all["Grade"].isna().sum()
+    if missing > 0:
+        print(f"[WARN] {missing} cases thiếu Grade trong name_mapping.csv (sẽ bị loại khỏi phân tích theo Grade).")
+
+    df_with_grade = df_all.dropna(subset=["Grade"])
+    if df_with_grade.empty:
+        print("[WARN] Không có case nào có Grade. Chạy phân tích chung.")
+        run_one_group(df_all, out_root)
+        return
+
+    # 3) Chạy cho ALL + từng nhóm HGG / LGG
+    run_one_group(df_all, out_root / "ALL")
+
+    for g in ["HGG", "LGG"]:
+        sub = df_with_grade[df_with_grade["Grade"].str.upper() == g]
+        if sub.empty:
+            print(f"[WARN] Không có case thuộc nhóm {g}. Bỏ qua.")
+            continue
+        run_one_group(sub, out_root / g)
+
+    print(f"[OK] Saved grouped results to: {out_root} (ALL/HGG/LGG)")
 
 
 if __name__ == "__main__":
