@@ -1,0 +1,6 @@
+*.nii.gz
+*.ckpt
+/data/BraST2020/*
+/data/processed/2d/*
+/data/processed/3d/*
+/wandb
