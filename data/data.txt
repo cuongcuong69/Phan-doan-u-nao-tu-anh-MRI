@@ -1,0 +1,11 @@
+data:
+    - BraST2020:
+        - BraTS2020_TrainingData
+            - MICCAI_BraTS2020_TrainingData
+                - BraTS2020_Training_001 -> BraTS2020_Training_369
+        - BraTS2020_ValidationData
+            - MICCAI_BraTS2020_ValidationData
+                - BraTS2020_Validation_001 -> BraTS2020_Validation_125
+    - processed:
+        - 2d
+        - 3d
