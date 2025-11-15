@@ -1,6 +1,11 @@
+# -*- coding: utf-8 -*-
 import torch
 from torch import nn
 import torch.nn.functional as F
+
+# ============================================================
+#  Blocks giống hệt VNet gốc của bạn
+# ============================================================
 
 class ConvBlock(nn.Module):
     def __init__(self, n_stages, n_filters_in, n_filters_out, normalization='none'):
@@ -8,7 +13,7 @@ class ConvBlock(nn.Module):
 
         ops = []
         for i in range(n_stages):
-            if i==0:
+            if i == 0:
                 input_channel = n_filters_in
             else:
                 input_channel = n_filters_out
@@ -52,7 +57,7 @@ class ResidualConvBlock(nn.Module):
             elif normalization != 'none':
                 assert False
 
-            if i != n_stages-1:
+            if i != n_stages - 1:
                 ops.append(nn.ReLU(inplace=True))
 
         self.conv = nn.Sequential(*ops)
@@ -123,7 +128,7 @@ class Upsampling(nn.Module):
         super(Upsampling, self).__init__()
 
         ops = []
-        ops.append(nn.Upsample(scale_factor=stride, mode='trilinear',align_corners=False))
+        ops.append(nn.Upsample(scale_factor=stride, mode='trilinear', align_corners=False))
         ops.append(nn.Conv3d(n_filters_in, n_filters_out, kernel_size=3, padding=1))
         if normalization == 'batchnorm':
             ops.append(nn.BatchNorm3d(n_filters_out))
@@ -142,11 +147,25 @@ class Upsampling(nn.Module):
         return x
 
 
-class VNet(nn.Module):
-    def __init__(self, n_channels=3, n_classes=2, n_filters=16, normalization='none', has_dropout=False):
-        super(VNet, self).__init__()
+# ============================================================
+# VNetMultiHead: encoder/decoder chung + 3 head WT/TC/ET
+# ============================================================
+
+class VNetMultiHead(nn.Module):
+    """
+    VNet encoder + decoder chung, nhưng có 3 HEAD RIÊNG:
+      - WT head → Whole Tumor
+      - TC head → Tumor Core
+      - ET head → Enhancing Tumor
+
+    Mỗi head là phân đoạn nhị phân (background vs class), output (B,2,D,H,W)
+    """
+
+    def __init__(self, n_channels=4, n_filters=16, normalization='instancenorm', has_dropout=True):
+        super(VNetMultiHead, self).__init__()
         self.has_dropout = has_dropout
 
+        # ---------- Encoder ----------
         self.block_one = ConvBlock(1, n_channels, n_filters, normalization=normalization)
         self.block_one_dw = DownsamplingConvBlock(n_filters, 2 * n_filters, normalization=normalization)
 
@@ -162,6 +181,7 @@ class VNet(nn.Module):
         self.block_five = ConvBlock(3, n_filters * 16, n_filters * 16, normalization=normalization)
         self.block_five_up = UpsamplingDeconvBlock(n_filters * 16, n_filters * 8, normalization=normalization)
 
+        # ---------- Decoder ----------
         self.block_six = ConvBlock(3, n_filters * 8, n_filters * 8, normalization=normalization)
         self.block_six_up = UpsamplingDeconvBlock(n_filters * 8, n_filters * 4, normalization=normalization)
 
@@ -172,11 +192,16 @@ class VNet(nn.Module):
         self.block_eight_up = UpsamplingDeconvBlock(n_filters * 2, n_filters, normalization=normalization)
 
         self.block_nine = ConvBlock(1, n_filters, n_filters, normalization=normalization)
-        self.out_conv = nn.Conv3d(n_filters, n_classes, 1, padding=0)
+
+        # ---------- Multi-head outputs ----------
+        # Mỗi head: nhị phân (background / class) → 2 kênh
+        self.head_wt = nn.Conv3d(n_filters, 2, kernel_size=1)  # Whole Tumor
+        self.head_tc = nn.Conv3d(n_filters, 2, kernel_size=1)  # Tumor Core
+        self.head_et = nn.Conv3d(n_filters, 2, kernel_size=1)  # Enhancing Tumor
 
         self.dropout = nn.Dropout3d(p=0.5, inplace=False)
-        # self.__init_weight()
 
+    # ---------------- ENCODER ----------------
     def encoder(self, input):
         x1 = self.block_one(input)
         x1_dw = self.block_one_dw(x1)
@@ -191,20 +216,15 @@ class VNet(nn.Module):
         x4_dw = self.block_four_dw(x4)
 
         x5 = self.block_five(x4_dw)
-        # x5 = F.dropout3d(x5, p=0.5, training=True)
         if self.has_dropout:
             x5 = self.dropout(x5)
 
         res = [x1, x2, x3, x4, x5]
-
         return res
 
+    # ---------------- DECODER ----------------
     def decoder(self, features):
-        x1 = features[0]
-        x2 = features[1]
-        x3 = features[2]
-        x4 = features[3]
-        x5 = features[4]
+        x1, x2, x3, x4, x5 = features
 
         x5_up = self.block_five_up(x5)
         x5_up = x5_up + x4
@@ -220,38 +240,41 @@ class VNet(nn.Module):
         x8 = self.block_eight(x7_up)
         x8_up = self.block_eight_up(x8)
         x8_up = x8_up + x1
+
         x9 = self.block_nine(x8_up)
-        # x9 = F.dropout3d(x9, p=0.5, training=True)
         if self.has_dropout:
             x9 = self.dropout(x9)
-        out = self.out_conv(x9)
-        return out
+        return x9  # shared feature map cuối
+
+    # ---------------- FORWARD ----------------
+    def forward(self, input, return_feats=False):
+        feats = self.encoder(input)
+        shared = self.decoder(feats)
+
+        out_wt = self.head_wt(shared)  # (B,2,D,H,W)
+        out_tc = self.head_tc(shared)  # (B,2,D,H,W)
+        out_et = self.head_et(shared)  # (B,2,D,H,W)
+
+        if return_feats:
+            return {
+                "wt": out_wt,
+                "tc": out_tc,
+                "et": out_et,
+                "shared": shared,
+                "features": feats,
+            }
+        return {
+            "wt": out_wt,
+            "tc": out_tc,
+            "et": out_et,
+        }
 
 
-    def forward(self, input, turnoff_drop=False):
-        if turnoff_drop:
-            has_dropout = self.has_dropout
-            self.has_dropout = False
-        features = self.encoder(input)
-        out = self.decoder(features)
-        if turnoff_drop:
-            self.has_dropout = has_dropout
-        return out
-
-    # def __init_weight(self):
-    #     for m in self.modules():
-    #         if isinstance(m, nn.Conv3d):
-    #             torch.nn.init.kaiming_normal_(m.weight)
-    #         elif isinstance(m, nn.BatchNorm3d):
-    #             m.weight.data.fill_(1)
-    #             m.bias.data.zero_()
 if __name__ == '__main__':
-    # compute FLOPS & PARAMETERS
-    from thop import profile, clever_format
-    model = VNet(n_channels=4, n_classes=4)
-    inputs = torch.randn(2, 4, 96, 96, 96)  # (B,C,D,H,W)
-    seg = model(inputs)
-    print("seg:", seg.shape)   # torch.Size([2, 4, 96, 96, 96])
-    flops, params = profile(model, inputs=(inputs,))
-    macs, params = clever_format([flops, params], "%.3f")
-    print("FLOPs/Params:", macs, params) # FLOPs/Params: 73.072G 9.445M
+    # Test nhanh
+    model = VNetMultiHead(n_channels=4, n_filters=16, normalization='instancenorm', has_dropout=True)
+    x = torch.randn(2, 4, 64, 64, 64)  # (B,C,D,H,W)
+    out = model(x)
+    print("WT:", out["wt"].shape)
+    print("TC:", out["tc"].shape)
+    print("ET:", out["et"].shape)

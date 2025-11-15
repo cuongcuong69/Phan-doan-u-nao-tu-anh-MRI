@@ -4,3 +4,5 @@
 /data/processed/2d/*
 /data/processed/3d/*
 /wandb
+*.pth
+*.pkl
