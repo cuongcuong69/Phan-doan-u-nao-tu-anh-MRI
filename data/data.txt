@@ -7,5 +7,7 @@ data:
             - MICCAI_BraTS2020_ValidationData
                 - BraTS2020_Validation_001 -> BraTS2020_Validation_125
     - processed:
-        - 2d
+        - 2d:
+            - labeled
+            - unlabeded
         - 3d
