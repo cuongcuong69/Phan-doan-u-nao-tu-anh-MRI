@@ -425,7 +425,7 @@ def build_brats3d_sup_train_loader(
         rejection_thresh=rejection_thresh,
         rejection_max=rejection_max,
         mixed_weights=mixed_weights,
-        use_augment=False,
+        use_augment=True,
     )
     loader = DataLoader(
         ds,

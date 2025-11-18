@@ -56,22 +56,22 @@ CFG: Dict[str, Any] = {
     "SEED": 2025,
 
     # --------------------- Data ---------------------
-    "PATCH_SIZE": (64, 64, 64),  # (D,H,W)
+    "PATCH_SIZE": (128, 128, 128),  # (D,H,W)
 
-    "TRAIN_BATCH": 4,
-    "VAL_BATCH": 4,
+    "TRAIN_BATCH": 1,
+    "VAL_BATCH": 1,
     "NUM_WORKERS_TRAIN": 0,
     "NUM_WORKERS_VAL": 0,
 
-    "NUM_MODALITIES": 4,   # FLAIR, T1, T1CE, T2
-    "NUM_CLASSES": 4,      # 0,1,2,3 (sau khi map 4 -> 3)
+    "NUM_MODALITIES": 4,   
+    "NUM_CLASSES": 4,      
 
     # --------------------- Model ---------------------
     "VNET_MULTIENC": {
         "n_modalities": 4,
         "n_classes": 4,
         "n_filters": 16,
-        "normalization": "none",  # "batchnorm" | "groupnorm" | "instancenorm" | "none"
+        "normalization": "groupnorm",  # "batchnorm" | "groupnorm" | "instancenorm" | "none"
         "has_dropout": True,
     },
 
@@ -94,7 +94,7 @@ CFG: Dict[str, Any] = {
     # --------------------- Loss ---------------------
     "LOSS": {
         # "ce" | "dice" | "dicece"
-        "loss_type": "dicece",
+        "loss_type": "dice",
 
         "w_dice": 1.0,
         "w_ce": 1.0,
@@ -110,20 +110,20 @@ CFG: Dict[str, Any] = {
     "VAL_SAMPLING_MODE": "mixed",
     "REJECTION_THRESH": 0.01,
     "REJECTION_MAX": 8,
-    "TRAIN_MIXED_WEIGHTS": {"center_fg": 0.7, "random": 0.3},
-    "VAL_MIXED_WEIGHTS":   {"center_fg": 0.7, "random": 0.3},
+    "TRAIN_MIXED_WEIGHTS": {"center_fg": 0.6, "random": 0.4},
+    "VAL_MIXED_WEIGHTS":   {"center_fg": 0.6, "random": 0.4},
 
     # --------------------- Validation ---------------------
-    "EVAL_EVERY": 5,   # validate mỗi epoch
+    "EVAL_EVERY": 2,   # validate mỗi epoch
 
     # --------------------- Checkpoint ---------------------
-    "SAVE_EVERY": 25,
+    "SAVE_EVERY": 100,
     "RESUME_CKPT": "",  # điền đường dẫn ckpt để resume nếu muốn
 
     # --------------------- WandB ---------------------
     "WANDB": {
         "use_wandb": True,
-        "project": "brats2020-vnet3d-sup",
+        "project": "brats2020-vnet_multiencoder-sup",
         "entity": None,   # hoặc "username"
     },
 
