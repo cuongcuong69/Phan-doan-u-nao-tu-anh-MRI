@@ -1,8 +1,49 @@
+# Data files
 *.nii.gz
-*.ckpt
 /data/BraST2020/*
 /data/processed/2d/*
 /data/processed/3d/*
-/wandb
+
+# Model checkpoints and weights
+*.ckpt
 *.pth
 *.pkl
+*.pt
+*.h5
+*.hdf5
+
+# Logging and experiments
+/wandb/
+*.log
+*.txt.log
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+
+# Virtual environments
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS generated files
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
