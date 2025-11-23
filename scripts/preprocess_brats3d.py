@@ -4,7 +4,9 @@ Tiền xử lý 3D BraTS2020 → data/processed/3d/{labeled, unlabeled}
 
 ✔ Orientation RAS
 ✔ Crop không gian: x=22:216, y=16:210, z giữ nguyên
-✔ Chuẩn hóa cường độ về [0, 1] theo min–max trên non-zero
+✔ Chuẩn hóa cường độ theo non-zero voxels, với 2 chế độ:
+    - "minmax":  về [0, 1] (min–max per-volume, non-zero)
+    - "zscore":  z-score trên non-zero (tùy chọn clip)
 ✔ Mapping mask: 4 → 3
 ✔ Lưu output theo format:
    data/processed/3d/labeled/Brain_XXX/{flair,t1,t1ce,t2,mask}.nii.gz
@@ -41,6 +43,15 @@ MOD_SUFFIX = {
     "t2":    "t2",
     "seg":   "seg",
 }
+
+# ---- CHỌN CHẾ ĐỘ CHUẨN HÓA ----
+# "minmax" : chuẩn hóa về [0,1] theo min–max trên non-zero
+# "zscore" : chuẩn hóa theo z-score trên non-zero (mean=0, std=1, có thể clip)
+NORM_MODE = "zscore"   # hoặc "zscore"
+
+# Nếu dùng z-score, có thể clip giá trị để tránh outlier quá lớn
+# Đặt thành None nếu không muốn clip
+ZSCORE_CLIP = (-5.0, 5.0)
 # =======================================================
 
 
@@ -67,7 +78,12 @@ def crop_xy(vol: np.ndarray):
     return vol[x0:x1, y0:y1, :]
 
 
-def normalize_to_01(vol: np.ndarray):
+# ---------------- NORMALIZATION ----------------
+def normalize_minmax_nonzero(vol: np.ndarray) -> np.ndarray:
+    """
+    Chuẩn hóa về [0,1] theo min–max trên các voxel non-zero.
+    Các voxel =0 (ngoài não) giữ nguyên =0.
+    """
     nz = vol[vol > 0]
     if nz.size == 0:
         return np.zeros_like(vol, dtype=np.float32)
@@ -75,9 +91,55 @@ def normalize_to_01(vol: np.ndarray):
     if vmax <= vmin:
         return np.zeros_like(vol, dtype=np.float32)
     out = (vol - vmin) / (vmax - vmin)
-    return np.clip(out, 0, 1).astype(np.float32)
+    out = np.clip(out, 0.0, 1.0)
+    return out.astype(np.float32)
 
 
+def normalize_zscore_nonzero(vol: np.ndarray,
+                             clip: tuple | None = None,
+                             eps: float = 1e-8) -> np.ndarray:
+    """
+    Chuẩn hóa theo z-score trên các voxel non-zero:
+        x' = (x - mean) / std
+    Các voxel =0 giữ nguyên =0.
+    Có thể clip về [clip[0], clip[1]] nếu clip không phải None.
+    """
+    out = np.zeros_like(vol, dtype=np.float32)
+
+    mask_nz = vol > 0
+    if not np.any(mask_nz):
+        return out
+
+    vals = vol[mask_nz].astype(np.float32)
+    mean = vals.mean()
+    std = vals.std()
+    if std < eps:
+        # Nếu std quá nhỏ, tránh chia cho ~0 → trả về 0
+        return out
+
+    norm_vals = (vals - mean) / (std + eps)
+    if clip is not None:
+        lo, hi = clip
+        norm_vals = np.clip(norm_vals, lo, hi)
+
+    out[mask_nz] = norm_vals
+    return out.astype(np.float32)
+
+
+def normalize_intensity(vol: np.ndarray) -> np.ndarray:
+    """
+    Wrapper chọn hàm normalize theo NORM_MODE.
+    """
+    mode = NORM_MODE.lower()
+    if mode == "minmax":
+        return normalize_minmax_nonzero(vol)
+    elif mode == "zscore":
+        return normalize_zscore_nonzero(vol, clip=ZSCORE_CLIP)
+    else:
+        raise ValueError(f"Unknown NORM_MODE='{NORM_MODE}', expected 'minmax' or 'zscore'.")
+
+
+# ---------------- MASK / SAVE ----------------
 def map_seg(seg: np.ndarray):
     seg = seg.astype(np.uint8)
     return np.where(seg == 4, 3, seg)
@@ -103,7 +165,7 @@ def process_labeled(case_dir: Path):
 
         vol, img_ras = load_ras(fp)
         vol = crop_xy(vol)
-        vol = normalize_to_01(vol)
+        vol = normalize_intensity(vol)
 
         save_nifti(vol, img_ras, out_dir / f"{mod}.nii.gz")
 
@@ -133,13 +195,17 @@ def process_unlabeled(case_dir: Path):
 
         vol, img_ras = load_ras(fp)
         vol = crop_xy(vol)
-        vol = normalize_to_01(vol)
+        vol = normalize_intensity(vol)
 
         save_nifti(vol, img_ras, out_dir / f"{mod}.nii.gz")
 
 
 # ---------------- MAIN ----------------
 def main():
+    print(f"[INFO] NORM_MODE     = {NORM_MODE}")
+    if NORM_MODE.lower() == "zscore":
+        print(f"[INFO] ZSCORE_CLIP   = {ZSCORE_CLIP}")
+
     ensure_dir(OUT_LABELED)
     ensure_dir(OUT_UNLABELED)
 

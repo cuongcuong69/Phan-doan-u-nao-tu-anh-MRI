@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Inference cho VNetMultiHead 3D trên BraTS2020:
+Inference cho VNetMultiEncFusion 3D trên BraTS2020:
 
 - Đọc 4 modality riêng: flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz
 - Ground truth: mask.nii.gz (giá trị 0..3 sau khi remap 4 -> 3)
-- Model: models.vnet_multihead.VNetMultiHead (3 head nhị phân WT/TC/ET)
-- Sliding window 3D với patch_size = (64,64,64), stride = 50
+- Model: models.vnet_multi_enc_fusion.VNetMultiEncFusion (multi-encoder, seg 4 lớp)
+- Sliding window 3D với patch_size = (128,128,128), stride = (64,64,64)
 - Tính metrics per-case cho WT, TC, ET: Dice, IoU, ASD, HD95
 - Lưu segmentation dự đoán và CSV metrics
 """
@@ -39,26 +39,23 @@ except ImportError:  # pragma: no cover
 CFG_INFER: Dict[str, Any] = {
 
     # Tên thí nghiệm (để lấy ckpt & thư mục output)
-    "EXP_NAME": "brats3d_vnetmh_sup",
+    "EXP_NAME": "brats3d_vnet_multienc_sup",
 
     # Patch & stride
     "PATCH_SIZE": (128, 128, 128),   # (D, H, W)
-    "STRIDE": (20, 20, 20),       # (Dz, Dy, Dx)
+    "STRIDE": (128, 128, 128),          # (Dz, Dy, Dx) - bạn có thể đổi thành (50,50,50) nếu muốn
 
     # Đường dẫn tương đối (theo ROOT)
     "DATA_ROOT_3D": "data/processed/3d/labeled",
     "SPLIT_ROOT": "configs/splits_2d",
     "TEST_LIST": "test.txt",      # danh sách Brain_ID
-    "CKPT_NAME": "best_checkpoint_VNetMH_sup.pth",
+    "CKPT_NAME": "best_checkpoint_VNet_multienc_sup.pth",
 
     # Nơi lưu kết quả inference
-    "OUT_DIR": "experiments/brats3d_vnetmh_sup/inference",
+    "OUT_DIR": "experiments/brats3d_vnet_multienc_sup/inference",
 
     # Device
     "DEVICE": "cuda",             # "cuda" hoặc "cpu"
-
-    # Ngưỡng xác định foreground từ prob
-    "THRESH": 0.5,
 }
 
 
@@ -71,7 +68,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 # Model
-from models.vnet_multihead import VNetMultiHead  # noqa: E402
+from models.vnet_multi_enc_fusion import VNetMultiEncFusion 
 
 
 # =============================================================================
@@ -97,9 +94,9 @@ def read_case_list(list_path: Path) -> List[str]:
     return ids
 
 
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # Loading NIfTI volumes
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 
 def load_volume_4ch_from_modalities(case_dir: Path) -> Tuple[np.ndarray, "nib.Nifti1Image"]:
     """
@@ -156,9 +153,9 @@ def load_label_3d(lbl_path: Path) -> Tuple[np.ndarray, "nib.Nifti1Image"]:
     return seg, lbl_nii
 
 
-# -----------------------------------------------------------------------------
-# Sliding window inference
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# Sliding window inference (multi-class 4 lớp)
+# -------------------------------------------------------------------------
 
 def _compute_steps(dim: int, patch: int, stride: int) -> List[int]:
     """Tính các vị trí bắt đầu cho sliding window trên 1 trục."""
@@ -171,17 +168,17 @@ def _compute_steps(dim: int, patch: int, stride: int) -> List[int]:
 
 
 @torch.no_grad()
-def sliding_window_multihead(
+def sliding_window_multiclass(
     model: torch.nn.Module,
     vol_4ch: np.ndarray,
     patch_size: Tuple[int, int, int],
     stride: Tuple[int, int, int],
     device: torch.device,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> np.ndarray:
     """
     vol_4ch: (4, D, H, W)
     Trả về:
-        prob_wt, prob_tc, prob_et: (D, H, W) - xác suất foreground mỗi region.
+        prob_mean: (C=4, D, H, W) - xác suất trung bình cho mỗi lớp.
     """
     model.eval()
 
@@ -193,10 +190,8 @@ def sliding_window_multihead(
     steps_h = _compute_steps(H, ph, sh)
     steps_w = _compute_steps(W, pw, sw)
 
-    # Tích lũy xác suất foreground
-    prob_wt_sum = np.zeros((D, H, W), dtype=np.float32)
-    prob_tc_sum = np.zeros((D, H, W), dtype=np.float32)
-    prob_et_sum = np.zeros((D, H, W), dtype=np.float32)
+    # Tích lũy xác suất theo từng lớp
+    prob_sum = np.zeros((4, D, H, W), dtype=np.float32)
     count = np.zeros((D, H, W), dtype=np.float32)
 
     for z in steps_d:
@@ -205,64 +200,26 @@ def sliding_window_multihead(
                 patch = vol_4ch[:, z:z+pd, y:y+ph, x:x+pw]  # (4, pd, ph, pw)
                 patch_t = torch.from_numpy(patch[None, ...]).to(device)  # (1,4,*,*,*)
 
-                out = model(patch_t)  # dict: wt/tc/et, each (1,2,*,*,*)
-                logits_wt = out["wt"]
-                logits_tc = out["tc"]
-                logits_et = out["et"]
+                out = model(patch_t)  # có thể là dict {"seg": logits} hoặc tensor
+                if isinstance(out, dict):
+                    logits = out["seg"]
+                else:
+                    logits = out  # (1,4,*,*,*)
 
-                # foreground prob = softmax(...)[...,1]
-                prob_wt = torch.softmax(logits_wt, dim=1)[:, 1].cpu().numpy()[0]
-                prob_tc = torch.softmax(logits_tc, dim=1)[:, 1].cpu().numpy()[0]
-                prob_et = torch.softmax(logits_et, dim=1)[:, 1].cpu().numpy()[0]
+                probs = torch.softmax(logits, dim=1)[0].cpu().numpy()  # (4, pd, ph, pw)
 
-                prob_wt_sum[z:z+pd, y:y+ph, x:x+pw] += prob_wt
-                prob_tc_sum[z:z+pd, y:y+ph, x:x+pw] += prob_tc
-                prob_et_sum[z:z+pd, y:y+ph, x:x+pw] += prob_et
+                prob_sum[:, z:z+pd, y:y+ph, x:x+pw] += probs
                 count[z:z+pd, y:y+ph, x:x+pw] += 1.0
 
-    count[count == 0] = 1.0  # tránh chia 0 (trường hợp cực đoan)
+    count[count == 0] = 1.0  # tránh chia 0
+    prob_mean = prob_sum / count[None, ...]  # broadcast count lên C
 
-    prob_wt = prob_wt_sum / count
-    prob_tc = prob_tc_sum / count
-    prob_et = prob_et_sum / count
-
-    return prob_wt, prob_tc, prob_et
+    return prob_mean  # (4, D, H, W)
 
 
-def region_probs_to_seg(
-    prob_wt: np.ndarray,
-    prob_tc: np.ndarray,
-    prob_et: np.ndarray,
-    thresh: float = 0.5,
-) -> np.ndarray:
-    """
-    Convert xác suất WT/TC/ET thành nhãn BraTS (0..3).
-
-    Quy ước:
-      - ET: label 3
-      - TC (không ET): label 1
-      - WT (chỉ edema): label 2
-      - Nền: 0
-    """
-    bw = prob_wt >= thresh
-    bt = prob_tc >= thresh
-    be = prob_et >= thresh
-
-    seg = np.zeros(prob_wt.shape, dtype=np.int16)
-
-    # ET
-    seg[be] = 3
-    # Tumor core không enhancing
-    seg[bt & (~be)] = 1
-    # Edema (WT mà không thuộc TC/ET)
-    seg[bw & (~bt) & (~be)] = 2
-
-    return seg
-
-
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # Metrics (Dice, IoU, ASD, HD95) cho nhị phân
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 
 def compute_binary_metrics(
     pred: np.ndarray,
@@ -365,13 +322,13 @@ def main():
     test_list_path = split_root / CFG_INFER["TEST_LIST"]
 
     exp_name = CFG_INFER["EXP_NAME"]
-    ckpt_path = ROOT / "experiments" / exp_name / "checkpoints_dicece" / CFG_INFER["CKPT_NAME"]
+    ckpt_path = ROOT / "experiments" / exp_name / "checkpoints_dice" / CFG_INFER["CKPT_NAME"]
     out_dir = ROOT / CFG_INFER["OUT_DIR"]
     out_pred_dir = out_dir / "preds"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_pred_dir.mkdir(parents=True, exist_ok=True)
 
-    print("=== INFERENCE VNetMultiHead BraTS3D ===")
+    print("=== INFERENCE VNetMultiEncFusion BraTS3D ===")
     print(f"ROOT:           {ROOT}")
     print(f"Data root 3D:   {data_root_3d}")
     print(f"Test list:      {test_list_path}")
@@ -385,8 +342,9 @@ def main():
 
     # ---- Build model & load checkpoint ----
     # Thông số model phải khớp lúc train
-    model = VNetMultiHead(
-        n_channels=4,
+    model = VNetMultiEncFusion(
+        n_modalities=4,
+        n_classes=4,
         n_filters=16,
         normalization="groupnorm",
         has_dropout=True,
@@ -398,10 +356,9 @@ def main():
 
     patch_size = tuple(CFG_INFER["PATCH_SIZE"])
     stride = tuple(CFG_INFER["STRIDE"])
-    thresh = float(CFG_INFER["THRESH"])
 
     # ---- CSV ----
-    csv_path = out_dir / "metrics_vnetmh_test.csv"
+    csv_path = out_dir / "metrics_vnet_multienc_test.csv"
     csv_headers = [
         "case_id",
         # WT
@@ -431,6 +388,7 @@ def main():
             print(f"[WARN] Missing label: {lbl_path}, skip.")
             continue
 
+        # Load 4 modality
         try:
             vol_4ch, img_nii = load_volume_4ch_from_modalities(case_dir)
         except FileNotFoundError as e:
@@ -443,13 +401,14 @@ def main():
         spacing = lbl_nii.header.get_zooms()[:3]
 
         # ---- Sliding window inference ----
-        prob_wt, prob_tc, prob_et = sliding_window_multihead(
+        prob_mean = sliding_window_multiclass(
             model, vol_4ch, patch_size, stride, device
-        )
-        pred_seg = region_probs_to_seg(prob_wt, prob_tc, prob_et, thresh=thresh)
+        )  # (4, D, H, W)
+
+        pred_seg = np.argmax(prob_mean, axis=0).astype(np.int16)  # (D,H,W) với label 0..3
 
         # ---- Lưu NIfTI dự đoán ----
-        pred_nii = nib.Nifti1Image(pred_seg.astype(np.int16), affine=img_nii.affine, header=img_nii.header)
+        pred_nii = nib.Nifti1Image(pred_seg, affine=img_nii.affine, header=img_nii.header)
         out_pred_path = out_pred_dir / f"{case_id}_pred.nii.gz"
         nib.save(pred_nii, str(out_pred_path))
 
@@ -469,8 +428,13 @@ def main():
         csv_rows.append(row)
 
         # gom metrics để tính mean (giữ cả NaN, sẽ dùng nanmean)
-        for key, val in zip(csv_headers[1:], row[1:]):
-            metrics_all[key].append(val)
+        keys = [
+            "dice_wt", "iou_wt", "asd_wt", "hd95_wt",
+            "dice_tc", "iou_tc", "asd_tc", "hd95_tc",
+            "dice_et", "iou_et", "asd_et", "hd95_et",
+        ]
+        for k, v in zip(keys, row[1:]):
+            metrics_all[k].append(v)
 
     # ---- Save CSV ----
     with open(csv_path, "w", newline="") as f:

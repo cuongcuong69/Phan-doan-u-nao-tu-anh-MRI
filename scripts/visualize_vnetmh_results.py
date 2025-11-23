@@ -2,24 +2,9 @@
 """
 Visualize kết quả dự đoán VNetMultiHead trên BraTS:
 - Overlay Ground Truth và Prediction lên ảnh nền (1 modality).
-- Mỗi slice vẽ 2 ảnh: GT overlay (trái) và Pred overlay (phải).
+- Thêm legend WT – TC – ET cho multi-head.
 
-Giả định cấu trúc folder:
-data/
-  processed/
-    3d/
-      labeled/
-        Brain_001/
-          flair.nii.gz
-          t1.nii.gz
-          t1ce.nii.gz
-          t2.nii.gz
-          mask.nii.gz
-experiments/
-  brats3d_vnetmh_sup/
-    inference/
-      preds/
-        Brain_001_pred.nii.gz
+Ảnh đã được normalize Z-score từ preprocessing --> không normalize lại.
 """
 
 from __future__ import annotations
@@ -27,57 +12,44 @@ import os
 import sys
 from pathlib import Path
 from typing import Dict, Any, List
-
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
-try:
-    import nibabel as nib
-except ImportError:
-    raise RuntimeError("Vui lòng cài nibabel: pip install nibabel")
-
+import nibabel as nib
 
 # =============================================================================
 # CONFIG
 # =============================================================================
 CFG_VIS: Dict[str, Any] = {
-    # Case cần visualize
-    "CASE_ID": "Brain_093",
-
-    # Modality dùng làm ảnh nền: "flair" | "t1" | "t1ce" | "t2"
-    "BASE_MODALITY": "flair",
-
-    # Số lát axial cần vẽ. Nếu None => tự chọn 6 lát đều trên toàn thể tích
+    "CASE_ID": "Brain_016",
+    "BASE_MODALITY": "t1ce",
     "NUM_SLICES": 6,
-
-    # Nếu muốn chỉ định chính xác các slice z (list[int]), set ở đây, ví dụ [60, 80, 100]
-    # Nếu không, để None để script tự chọn đều.
     "FIXED_SLICES": [i for i in range(60, 100, 5)],
-
-    # Thư mục dữ liệu & kết quả (tính từ ROOT)
     "DATA_ROOT_3D": "data/processed/3d/labeled",
     "PRED_ROOT": "experiments/brats3d_vnetmh_sup/inference/preds",
-
-    # Thư mục lưu hình output
     "OUT_DIR": "experiments/brats3d_vnetmh_sup/vis",
-
-    # Kích thước figure (width, height) cho mỗi slice
     "FIGSIZE": (10, 5),
 
-    # Màu overlay cho các label (RGBA)
-    # 0: background (transparent) – không dùng
+    # 🎨 OVERLAY MÀU CHUẨN BRA TS 2020
     "LABEL_COLORS": {
-        1: (1.0, 0.0, 0.0, 0.5),  # label 1  -> đỏ
-        2: (0.0, 1.0, 0.0, 0.5),  # label 2  -> xanh lá
-        3: (0.0, 0.0, 1.0, 0.5),  # label 3  -> xanh dương
+        1: (1.0, 0.30, 0.30, 0.55),   # NCR/NET – đỏ nhạt
+        2: (0.40, 1.0, 0.40, 0.55),   # Edema – xanh lá nhạt
+        3: (0.30, 0.30, 1.0, 0.55),   # ET – xanh dương
+    },
+
+    # Legend chuẩn multi-head
+    "LEGEND_NAMES": {
+        1: "TC (Tumor Core)",
+        2: "WT (Whole Tumor)",
+        3: "ET (Enhancing Tumor)",
     },
 }
 
 
 # =============================================================================
-# PATH & ROOT
+# ROOT
 # =============================================================================
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
@@ -86,83 +58,44 @@ if str(ROOT) not in sys.path:
 # =============================================================================
 # Utility
 # =============================================================================
-
 def load_modality(case_dir: Path, modality: str) -> np.ndarray:
-    """
-    Load 1 modality (flair / t1 / t1ce / t2).
-    Trả về: vol (H,W,D) float32.
-    """
-    fname = f"{modality}.nii.gz"
-    path = case_dir / fname
-    if not path.exists():
-        raise FileNotFoundError(f"Không tìm thấy file modality: {path}")
-
-    nii = nib.load(str(path))
-    vol = nii.get_fdata().astype(np.float32)  # (H,W,D) cho BraTS
-    return vol
+    nii = nib.load(str(case_dir / f"{modality}.nii.gz"))
+    return nii.get_fdata().astype(np.float32)
 
 
-def load_label(case_dir: Path, name: str = "mask.nii.gz") -> np.ndarray:
-    path = case_dir / name
-    if not path.exists():
-        raise FileNotFoundError(f"Không tìm thấy mask GT: {path}")
-    nii = nib.load(str(path))
-    seg = nii.get_fdata().astype(np.int16)  # (H,W,D)
-    seg[seg == 4] = 3  # phòng trường hợp còn label 4
-    return seg
-
-
-def load_pred(pred_dir: Path, case_id: str) -> np.ndarray:
-    path = pred_dir / f"{case_id}_pred.nii.gz"
-    if not path.exists():
-        raise FileNotFoundError(f"Không tìm thấy mask dự đoán: {path}")
-    nii = nib.load(str(path))
-    seg = nii.get_fdata().astype(np.int16)  # (H,W,D)
+def load_label(case_dir: Path) -> np.ndarray:
+    nii = nib.load(str(case_dir / "mask.nii.gz"))
+    seg = nii.get_fdata().astype(np.int16)
     seg[seg == 4] = 3
     return seg
 
 
-def normalize_to_0_1(img: np.ndarray) -> np.ndarray:
-    img = img.astype(np.float32)
-    vmin = np.percentile(img, 1)
-    vmax = np.percentile(img, 99)
-    img = np.clip(img, vmin, vmax)
-    if vmax - vmin < 1e-6:
-        return np.zeros_like(img)
-    img = (img - vmin) / (vmax - vmin)
-    return img
+def load_pred(pred_dir: Path, case_id: str) -> np.ndarray:
+    nii = nib.load(str(pred_dir / f"{case_id}_pred.nii.gz"))
+    seg = nii.get_fdata().astype(np.int16)
+    seg[seg == 4] = 3
+    return seg
 
 
-def choose_slices(D: int, num_slices: int, fixed_slices: List[int] | None = None) -> List[int]:
+def choose_slices(D: int, num_slices: int, fixed_slices):
     if fixed_slices is not None:
-        return [int(z) for z in fixed_slices if 0 <= int(z) < D]
-    if num_slices is None or num_slices <= 0:
-        num_slices = 6
+        return [int(z) for z in fixed_slices if 0 <= z < D]
     if D <= num_slices:
         return list(range(D))
-    indices = np.linspace(0, D - 1, num_slices, dtype=int)
-    # ép về int thường để tránh np.int64 in log
-    return [int(i) for i in indices]
+    return list(np.linspace(0, D - 1, num_slices, dtype=int))
 
 
-def build_overlay_rgba(seg_slice: np.ndarray, label_colors: Dict[int, tuple]) -> np.ndarray:
-    """
-    seg_slice: (H,W) int (0..3)
-    label_colors: mapping label -> (r,g,b,a)
-    Trả về: rgba (H,W,4)
-    """
-    H, W = seg_slice.shape
-    overlay = np.zeros((H, W, 4), dtype=np.float32)  # mặc định alpha=0
-
-    for lb, color in label_colors.items():
-        mask = seg_slice == lb
-        if not np.any(mask):
-            continue
-        overlay[mask] = color
-
-    return overlay
+def build_overlay(seg: np.ndarray, colors: Dict[int, tuple]) -> np.ndarray:
+    H, W = seg.shape
+    out = np.zeros((H, W, 4), dtype=np.float32)
+    for lb, col in colors.items():
+        out[seg == lb] = col
+    return out
 
 
+# =============================================================================
+# MAIN VISUALIZE
+# =============================================================================
 def visualize_case(
     case_id: str,
     base_modality: str,
@@ -172,101 +105,96 @@ def visualize_case(
     pred_root: Path,
     out_dir: Path,
     figsize=(10, 5),
-    label_colors: Dict[int, tuple] | None = None,
+    label_colors=None,
+    legend_names=None,
 ):
     if label_colors is None:
         label_colors = CFG_VIS["LABEL_COLORS"]
+    if legend_names is None:
+        legend_names = CFG_VIS["LEGEND_NAMES"]
 
     case_dir = data_root / case_id
     if not case_dir.exists():
-        raise FileNotFoundError(f"Thư mục case không tồn tại: {case_dir}")
+        raise FileNotFoundError(case_dir)
 
-    # Load volumes: (H,W,D)
     img_vol = load_modality(case_dir, base_modality)
-    gt_vol = load_label(case_dir, "mask.nii.gz")
+    gt_vol = load_label(case_dir)
     pred_vol = load_pred(pred_root, case_id)
 
     H, W, D = img_vol.shape
-    print(f"[{case_id}] shape = (H={H}, W={W}, D={D})")
+    print(f"[{case_id}] Loaded shape = ({H}, {W}, {D})")
 
-    img_norm = normalize_to_0_1(img_vol)
-
-    # Chọn slice (axial: theo trục D = axis 2)
     slice_ids = choose_slices(D, num_slices, fixed_slices)
-    print(f"[{case_id}] visualize axial slices (z over D): {slice_ids}")
+    print("Slices:", slice_ids)
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    for z in slice_ids:
-        # axial slice: [:,:,z]
-        img_z = img_norm[:, :, z]   # (H,W)
-        gt_z = gt_vol[:, :, z]
-        pred_z = pred_vol[:, :, z]
+    # 🎯 Legend handle
+    legend_handles = []
+    for lb, name in legend_names.items():
+        rgba = label_colors[lb]
+        legend_handles.append(
+            Patch(facecolor=rgba[:3], edgecolor="k", label=name)
+        )
 
-        gt_overlay = build_overlay_rgba(gt_z, label_colors)
-        pred_overlay = build_overlay_rgba(pred_z, label_colors)
+    for z in slice_ids:
+        img = img_vol[:, :, z]
+        gt = gt_vol[:, :, z]
+        pred = pred_vol[:, :, z]
+
+        gt_overlay = build_overlay(gt, label_colors)
+        pred_overlay = build_overlay(pred, label_colors)
 
         fig, axes = plt.subplots(1, 2, figsize=figsize)
-        fig.suptitle(f"{case_id} - axial slice z={z} - modality={base_modality}", fontsize=12)
+        fig.suptitle(
+            f"{case_id} – slice z={z} – modality={base_modality}",
+            fontsize=14
+        )
 
-        # --- GT ---
+        # ---- GT ----
         ax = axes[0]
-        ax.imshow(img_z, cmap="gray", interpolation="nearest")
+        ax.imshow(img, cmap="gray", interpolation="nearest")
         ax.imshow(gt_overlay, interpolation="nearest")
         ax.set_title("Ground Truth")
         ax.axis("off")
+        ax.legend(handles=legend_handles, loc="upper right", fontsize=9)
 
-        # --- Pred ---
+        # ---- Prediction ----
         ax = axes[1]
-        ax.imshow(img_z, cmap="gray", interpolation="nearest")
+        ax.imshow(img, cmap="gray", interpolation="nearest")
         ax.imshow(pred_overlay, interpolation="nearest")
         ax.set_title("Prediction")
         ax.axis("off")
 
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        plt.tight_layout()
+        out_path = out_dir / f"{case_id}_z{z:03d}.png"
+        plt.savefig(out_path, dpi=150)
+        plt.close()
 
-        out_path = out_dir / f"{case_id}_slice_{z:03d}.png"
-        plt.savefig(str(out_path), dpi=150)
-        plt.close(fig)
-
-        print(f"[SAVE] {out_path}")
+        print("[SAVE]", out_path)
 
 
 # =============================================================================
-# MAIN
+# ENTRY
 # =============================================================================
-
 def main():
-    case_id = CFG_VIS["CASE_ID"]
-    base_modality = CFG_VIS["BASE_MODALITY"]
-    num_slices = CFG_VIS["NUM_SLICES"]
-    fixed_slices = CFG_VIS["FIXED_SLICES"]
-
-    data_root = ROOT / CFG_VIS["DATA_ROOT_3D"]
-    pred_root = ROOT / CFG_VIS["PRED_ROOT"]
-    out_dir = ROOT / CFG_VIS["OUT_DIR"] / case_id
-
-    print("=== VISUALIZE VNetMultiHead BraTS ===")
-    print(f"ROOT:         {ROOT}")
-    print(f"Case ID:      {case_id}")
-    print(f"Data root:    {data_root}")
-    print(f"Pred root:    {pred_root}")
-    print(f"Out dir:      {out_dir}")
-    print(f"Modality:     {base_modality}")
+    cfg = CFG_VIS
+    case_id = cfg["CASE_ID"]
 
     visualize_case(
         case_id=case_id,
-        base_modality=base_modality,
-        num_slices=num_slices,
-        fixed_slices=fixed_slices,
-        data_root=data_root,
-        pred_root=pred_root,
-        out_dir=out_dir,
-        figsize=tuple(CFG_VIS["FIGSIZE"]),
-        label_colors=CFG_VIS["LABEL_COLORS"],
+        base_modality=cfg["BASE_MODALITY"],
+        num_slices=cfg["NUM_SLICES"],
+        fixed_slices=cfg["FIXED_SLICES"],
+        data_root=ROOT / cfg["DATA_ROOT_3D"],
+        pred_root=ROOT / cfg["PRED_ROOT"],
+        out_dir=ROOT / cfg["OUT_DIR"] / case_id,
+        figsize=tuple(cfg["FIGSIZE"]),
+        label_colors=cfg["LABEL_COLORS"],
+        legend_names=cfg["LEGEND_NAMES"],
     )
 
-    print("[OK] Visualization done.")
+    print("[OK] Done.")
 
 
 if __name__ == "__main__":

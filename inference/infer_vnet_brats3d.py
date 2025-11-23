@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Inference cho VNetMultiHead 3D trên BraTS2020:
+Inference cho VNet 3D đa lớp trên BraTS2020:
 
 - Đọc 4 modality riêng: flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz
 - Ground truth: mask.nii.gz (giá trị 0..3 sau khi remap 4 -> 3)
-- Model: models.vnet_multihead.VNetMultiHead (3 head nhị phân WT/TC/ET)
-- Sliding window 3D với patch_size = (64,64,64), stride = 50
+- Model: models.vnet.VNet (4 lớp: 0,1,2,3)
+- Sliding window 3D với patch_size = (128,128,128), stride = (64,64,64)
 - Tính metrics per-case cho WT, TC, ET: Dice, IoU, ASD, HD95
 - Lưu segmentation dự đoán và CSV metrics
 """
@@ -37,27 +37,27 @@ except ImportError:  # pragma: no cover
 # CONFIG INFERENCE
 # =============================================================================
 CFG_INFER: Dict[str, Any] = {
-
     # Tên thí nghiệm (để lấy ckpt & thư mục output)
-    "EXP_NAME": "brats3d_vnetmh_sup",
+    "EXP_NAME": "brats3d_vnet_sup",
 
-    # Patch & stride
-    "PATCH_SIZE": (128, 128, 128),   # (D, H, W)
-    "STRIDE": (20, 20, 20),       # (Dz, Dy, Dx)
+    # Patch & stride (D,H,W)
+    "PATCH_SIZE": (128, 128, 128),
+    "STRIDE": (20, 20, 20),
 
     # Đường dẫn tương đối (theo ROOT)
     "DATA_ROOT_3D": "data/processed/3d/labeled",
     "SPLIT_ROOT": "configs/splits_2d",
     "TEST_LIST": "test.txt",      # danh sách Brain_ID
-    "CKPT_NAME": "best_checkpoint_VNetMH_sup.pth",
+    "CKPT_NAME": "best_checkpoint_VNet_sup.pth",
 
     # Nơi lưu kết quả inference
-    "OUT_DIR": "experiments/brats3d_vnetmh_sup/inference",
+    "OUT_DIR": "experiments/brats3d_vnet_sup/inference_diceloss",
 
     # Device
     "DEVICE": "cuda",             # "cuda" hoặc "cpu"
 
-    # Ngưỡng xác định foreground từ prob
+    # Ngưỡng argmax → seg là đã rời rạc rồi nên không cần THRESH,
+    # nhưng giữ sẵn nếu muốn threshold softmax từng class
     "THRESH": 0.5,
 }
 
@@ -71,7 +71,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 # Model
-from models.vnet_multihead import VNetMultiHead  # noqa: E402
+from models.vnet import VNet  # noqa: E402
 
 
 # =============================================================================
@@ -171,21 +171,22 @@ def _compute_steps(dim: int, patch: int, stride: int) -> List[int]:
 
 
 @torch.no_grad()
-def sliding_window_multihead(
+def sliding_window_multiclass(
     model: torch.nn.Module,
     vol_4ch: np.ndarray,
     patch_size: Tuple[int, int, int],
     stride: Tuple[int, int, int],
     device: torch.device,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    num_classes: int = 4,
+) -> np.ndarray:
     """
     vol_4ch: (4, D, H, W)
     Trả về:
-        prob_wt, prob_tc, prob_et: (D, H, W) - xác suất foreground mỗi region.
+        prob_vol: (C, D, H, W) - xác suất mỗi lớp (softmax trung bình chồng chéo).
     """
     model.eval()
 
-    C, D, H, W = vol_4ch.shape
+    C_in, D, H, W = vol_4ch.shape
     pd, ph, pw = patch_size
     sd, sh, sw = stride
 
@@ -193,10 +194,7 @@ def sliding_window_multihead(
     steps_h = _compute_steps(H, ph, sh)
     steps_w = _compute_steps(W, pw, sw)
 
-    # Tích lũy xác suất foreground
-    prob_wt_sum = np.zeros((D, H, W), dtype=np.float32)
-    prob_tc_sum = np.zeros((D, H, W), dtype=np.float32)
-    prob_et_sum = np.zeros((D, H, W), dtype=np.float32)
+    prob_sum = np.zeros((num_classes, D, H, W), dtype=np.float32)
     count = np.zeros((D, H, W), dtype=np.float32)
 
     for z in steps_d:
@@ -205,63 +203,32 @@ def sliding_window_multihead(
                 patch = vol_4ch[:, z:z+pd, y:y+ph, x:x+pw]  # (4, pd, ph, pw)
                 patch_t = torch.from_numpy(patch[None, ...]).to(device)  # (1,4,*,*,*)
 
-                out = model(patch_t)  # dict: wt/tc/et, each (1,2,*,*,*)
-                logits_wt = out["wt"]
-                logits_tc = out["tc"]
-                logits_et = out["et"]
+                out = model(patch_t)  # (1, C, pd, ph, pw) hoặc dict["seg"]
+                if isinstance(out, dict):
+                    logits = out["seg"]
+                else:
+                    logits = out
 
-                # foreground prob = softmax(...)[...,1]
-                prob_wt = torch.softmax(logits_wt, dim=1)[:, 1].cpu().numpy()[0]
-                prob_tc = torch.softmax(logits_tc, dim=1)[:, 1].cpu().numpy()[0]
-                prob_et = torch.softmax(logits_et, dim=1)[:, 1].cpu().numpy()[0]
+                probs = torch.softmax(logits, dim=1).cpu().numpy()[0]  # (C, pd, ph, pw)
 
-                prob_wt_sum[z:z+pd, y:y+ph, x:x+pw] += prob_wt
-                prob_tc_sum[z:z+pd, y:y+ph, x:x+pw] += prob_tc
-                prob_et_sum[z:z+pd, y:y+ph, x:x+pw] += prob_et
+                prob_sum[:, z:z+pd, y:y+ph, x:x+pw] += probs
                 count[z:z+pd, y:y+ph, x:x+pw] += 1.0
 
-    count[count == 0] = 1.0  # tránh chia 0 (trường hợp cực đoan)
-
-    prob_wt = prob_wt_sum / count
-    prob_tc = prob_tc_sum / count
-    prob_et = prob_et_sum / count
-
-    return prob_wt, prob_tc, prob_et
+    count[count == 0] = 1.0
+    prob_vol = prob_sum / count[None, ...]
+    return prob_vol
 
 
-def region_probs_to_seg(
-    prob_wt: np.ndarray,
-    prob_tc: np.ndarray,
-    prob_et: np.ndarray,
-    thresh: float = 0.5,
-) -> np.ndarray:
+def probs_to_seg(prob_vol: np.ndarray) -> np.ndarray:
     """
-    Convert xác suất WT/TC/ET thành nhãn BraTS (0..3).
-
-    Quy ước:
-      - ET: label 3
-      - TC (không ET): label 1
-      - WT (chỉ edema): label 2
-      - Nền: 0
+    prob_vol: (C, D, H, W) -> seg: (D,H,W) int16 = argmax.
     """
-    bw = prob_wt >= thresh
-    bt = prob_tc >= thresh
-    be = prob_et >= thresh
-
-    seg = np.zeros(prob_wt.shape, dtype=np.int16)
-
-    # ET
-    seg[be] = 3
-    # Tumor core không enhancing
-    seg[bt & (~be)] = 1
-    # Edema (WT mà không thuộc TC/ET)
-    seg[bw & (~bt) & (~be)] = 2
-
+    seg = np.argmax(prob_vol, axis=0).astype(np.int16)
     return seg
 
 
 # -----------------------------------------------------------------------------
-# Metrics (Dice, IoU, ASD, HD95) cho nhị phân
+# Metrics (Dice, IoU, ASD, HD95) cho nhị phân WT/TC/ET
 # -----------------------------------------------------------------------------
 
 def compute_binary_metrics(
@@ -340,9 +307,9 @@ def compute_region_metrics(
     pred_tc = ((pred_seg == 1) | (pred_seg == 3)).astype(np.uint8)
     pred_et = (pred_seg == 3).astype(np.uint8)
 
-    m_wt = compute_binary_metrics(pred_wt, gt_wt, voxelspacing)
-    m_tc = compute_binary_metrics(pred_tc, gt_tc, voxelspacing)
-    m_et = compute_binary_metrics(pred_et, gt_et, voxelspacing)
+    m_wt = compute_binary_metrics(pred_wt, gt_wt, voxelspacing=voxelspacing)
+    m_tc = compute_binary_metrics(pred_tc, gt_tc, voxelspacing=voxelspacing)
+    m_et = compute_binary_metrics(pred_et, gt_et, voxelspacing=voxelspacing)
 
     return {"WT": m_wt, "TC": m_tc, "ET": m_et}
 
@@ -365,13 +332,13 @@ def main():
     test_list_path = split_root / CFG_INFER["TEST_LIST"]
 
     exp_name = CFG_INFER["EXP_NAME"]
-    ckpt_path = ROOT / "experiments" / exp_name / "checkpoints_dicece" / CFG_INFER["CKPT_NAME"]
+    ckpt_path = ROOT / "experiments" / exp_name / "checkpoints_diceloss" / CFG_INFER["CKPT_NAME"] ####
     out_dir = ROOT / CFG_INFER["OUT_DIR"]
     out_pred_dir = out_dir / "preds"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_pred_dir.mkdir(parents=True, exist_ok=True)
 
-    print("=== INFERENCE VNetMultiHead BraTS3D ===")
+    print("=== INFERENCE VNet BraTS3D ===")
     print(f"ROOT:           {ROOT}")
     print(f"Data root 3D:   {data_root_3d}")
     print(f"Test list:      {test_list_path}")
@@ -385,9 +352,10 @@ def main():
 
     # ---- Build model & load checkpoint ----
     # Thông số model phải khớp lúc train
-    model = VNetMultiHead(
+    model = VNet(
         n_channels=4,
-        n_filters=16,
+        n_classes=4,
+        n_filters=16,          # giống CFG["VNET"]["n_filters"] trong train
         normalization="groupnorm",
         has_dropout=True,
     ).to(device)
@@ -398,10 +366,9 @@ def main():
 
     patch_size = tuple(CFG_INFER["PATCH_SIZE"])
     stride = tuple(CFG_INFER["STRIDE"])
-    thresh = float(CFG_INFER["THRESH"])
 
     # ---- CSV ----
-    csv_path = out_dir / "metrics_vnetmh_test.csv"
+    csv_path = out_dir / "metrics_vnet_test.csv"
     csv_headers = [
         "case_id",
         # WT
@@ -413,7 +380,6 @@ def main():
     ]
     csv_rows: List[List[Any]] = []
 
-    # Để tính mean metrics cuối cùng
     metrics_all: Dict[str, List[float]] = {
         "dice_wt": [], "iou_wt": [], "asd_wt": [], "hd95_wt": [],
         "dice_tc": [], "iou_tc": [], "asd_tc": [], "hd95_tc": [],
@@ -425,7 +391,6 @@ def main():
     for case_id in pbar:
         case_dir = data_root_3d / case_id
 
-        # Ground-truth mask: mask.nii.gz
         lbl_path = case_dir / "mask.nii.gz"
         if not lbl_path.exists():
             print(f"[WARN] Missing label: {lbl_path}, skip.")
@@ -438,24 +403,23 @@ def main():
             continue
 
         gt_seg, lbl_nii = load_label_3d(lbl_path)
-
-        # spacing (z,y,x) dùng cho ASD/HD95
         spacing = lbl_nii.header.get_zooms()[:3]
 
         # ---- Sliding window inference ----
-        prob_wt, prob_tc, prob_et = sliding_window_multihead(
-            model, vol_4ch, patch_size, stride, device
+        prob_vol = sliding_window_multiclass(
+            model, vol_4ch, patch_size, stride, device, num_classes=4
         )
-        pred_seg = region_probs_to_seg(prob_wt, prob_tc, prob_et, thresh=thresh)
+        pred_seg = probs_to_seg(prob_vol)
 
         # ---- Lưu NIfTI dự đoán ----
-        pred_nii = nib.Nifti1Image(pred_seg.astype(np.int16), affine=img_nii.affine, header=img_nii.header)
+        pred_nii = nib.Nifti1Image(pred_seg.astype(np.int16),
+                                   affine=img_nii.affine,
+                                   header=img_nii.header)
         out_pred_path = out_pred_dir / f"{case_id}_pred.nii.gz"
         nib.save(pred_nii, str(out_pred_path))
 
         # ---- Metrics WT/TC/ET ----
         region_metrics = compute_region_metrics(pred_seg, gt_seg, voxelspacing=spacing)
-
         m_wt = region_metrics["WT"]
         m_tc = region_metrics["TC"]
         m_et = region_metrics["ET"]
@@ -468,7 +432,6 @@ def main():
         ]
         csv_rows.append(row)
 
-        # gom metrics để tính mean (giữ cả NaN, sẽ dùng nanmean)
         for key, val in zip(csv_headers[1:], row[1:]):
             metrics_all[key].append(val)
 
@@ -488,20 +451,20 @@ def main():
 
     mean_wt = {
         "dice": _nanmean(metrics_all["dice_wt"]),
-        "iou": _nanmean(metrics_all["iou_wt"]),
-        "asd": _nanmean(metrics_all["asd_wt"]),
+        "iou":  _nanmean(metrics_all["iou_wt"]),
+        "asd":  _nanmean(metrics_all["asd_wt"]),
         "hd95": _nanmean(metrics_all["hd95_wt"]),
     }
     mean_tc = {
         "dice": _nanmean(metrics_all["dice_tc"]),
-        "iou": _nanmean(metrics_all["iou_tc"]),
-        "asd": _nanmean(metrics_all["asd_tc"]),
+        "iou":  _nanmean(metrics_all["iou_tc"]),
+        "asd":  _nanmean(metrics_all["asd_tc"]),
         "hd95": _nanmean(metrics_all["hd95_tc"]),
     }
     mean_et = {
         "dice": _nanmean(metrics_all["dice_et"]),
-        "iou": _nanmean(metrics_all["iou_et"]),
-        "asd": _nanmean(metrics_all["asd_et"]),
+        "iou":  _nanmean(metrics_all["iou_et"]),
+        "asd":  _nanmean(metrics_all["asd_et"]),
         "hd95": _nanmean(metrics_all["hd95_et"]),
     }
 
