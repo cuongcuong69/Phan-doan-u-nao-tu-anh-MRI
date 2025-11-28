@@ -95,7 +95,7 @@ CFG: Dict[str, Any] = {
     # --------------------- Loss ---------------------
     "LOSS": {
         # "ce" | "dice" | "dicece"
-        "loss_type": "dice",
+        "loss_type": "ce",
 
         "w_dice": 1.0,
         "w_ce": 1.0,
@@ -667,8 +667,8 @@ def main():
 
     exp_name = CFG["EXP_NAME"]
     exp_dir = ROOT / "experiments" / exp_name
-    ckpt_dir = exp_dir / "checkpoints_diceloss" #####
-    log_dir = exp_dir / "logs_diceloss" ####
+    ckpt_dir = exp_dir / "checkpoints_celoss" #####
+    log_dir = exp_dir / "logs_celoss" ####
     exp_dir.mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -678,8 +678,8 @@ def main():
     print(f"Device:    {device}")
 
     # Logger (pickle)
-    train_logger = Logger(str(log_dir / "train_log_diceloss.pkl")) ####
-    val_logger = Logger(str(log_dir / "val_log_diceloss.pkl"))#####
+    train_logger = Logger(str(log_dir / "train_log_celoss.pkl")) ####
+    val_logger = Logger(str(log_dir / "val_log_celoss.pkl"))#####
 
     # wandb
     use_wandb = CFG["WANDB"]["use_wandb"] and _HAS_WANDB
