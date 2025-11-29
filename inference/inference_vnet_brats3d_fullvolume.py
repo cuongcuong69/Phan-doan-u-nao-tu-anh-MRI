@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Inference cho VNet 3D đa lớp trên BraTS2020:
+Inference cho VNet 3D đa lớp trên BraTS2020 (full-volume với resize trước/sau):
 
 - Đọc 4 modality riêng: flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz
 - Ground truth: mask.nii.gz (giá trị 0..3 sau khi remap 4 -> 3)
 - Model: models.vnet.VNet (4 lớp: 0,1,2,3)
-- Sliding window 3D với patch_size = (128,128,128), stride = (64,64,64)
-- Tính metrics per-case cho WT, TC, ET: Dice, IoU, ASD, HD95
-- Lưu segmentation dự đoán và CSV metrics
+
+Pipeline:
+    1) Load volume 4 kênh ở kích thước ban đầu (D0,H0,W0)
+    2) Resize về kích thước cố định đưa vào mạng: VOLUME_SIZE = (Dz,Hz,Wz)
+    3) Forward full-volume qua VNet, softmax + argmax
+    4) Resize segmentation dự đoán ngược về (D0,H0,W0)
+    5) Tính metrics WT/TC/ET (Dice, IoU, ASD, HD95) tại kích thước ban đầu
+    6) Lưu segmentation dự đoán (NIfTI) và CSV metrics
 """
 
 from __future__ import annotations
@@ -20,6 +25,7 @@ from typing import Dict, Any, List, Tuple
 import numpy as np
 import torch
 from tqdm.auto import tqdm
+from scipy.ndimage import zoom as nd_zoom  # để resize 3D
 
 # ---------------------- optional nibabel + medpy ----------------------
 try:
@@ -38,11 +44,10 @@ except ImportError:  # pragma: no cover
 # =============================================================================
 CFG_INFER: Dict[str, Any] = {
     # Tên thí nghiệm (để lấy ckpt & thư mục output)
-    "EXP_NAME": "brats3d_vnet_sup",
+    "EXP_NAME": "brats3d_vnet_sup_fullvolume",
 
-    # Patch & stride (D,H,W)
-    "PATCH_SIZE": (128, 128, 128),
-    "STRIDE": (10, 10, 10),
+    # Kích thước volume đưa vào mạng (D,H,W) – phải khớp với quá trình train
+    "VOLUME_SIZE": (128, 128, 128),
 
     # Đường dẫn tương đối (theo ROOT)
     "DATA_ROOT_3D": "data/processed/3d/labeled",
@@ -51,13 +56,12 @@ CFG_INFER: Dict[str, Any] = {
     "CKPT_NAME": "best_checkpoint_VNet_sup.pth",
 
     # Nơi lưu kết quả inference
-    "OUT_DIR": "experiments/brats3d_vnet_sup/inference",
+    "OUT_DIR": "experiments/brats3d_vnet_sup_fullvolume/inference",
 
     # Device
     "DEVICE": "cuda",             # "cuda" hoặc "cpu"
 
-    # Ngưỡng argmax → seg là đã rời rạc rồi nên không cần THRESH,
-    # nhưng giữ sẵn nếu muốn threshold softmax từng class
+    # Ngưỡng THRESH giữ lại cho tương thích (thực tế dùng argmax)
     "THRESH": 0.5,
 }
 
@@ -108,7 +112,7 @@ def load_volume_4ch_from_modalities(case_dir: Path) -> Tuple[np.ndarray, "nib.Ni
         flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz
 
     Trả về:
-        vol: np.ndarray (4, D, H, W) float32
+        vol: np.ndarray (4, D, H, W) float32  (kích thước BAN ĐẦU tại đây)
         nib_img: Nifti1Image của flair (dùng affine/header để save seg)
     """
     if nib is None:
@@ -136,6 +140,7 @@ def load_volume_4ch_from_modalities(case_dir: Path) -> Tuple[np.ndarray, "nib.Ni
     assert flair.shape == t1.shape == t1ce.shape == t2.shape, \
         f"Shape mismatch: flair {flair.shape}, t1 {t1.shape}, t1ce {t1ce.shape}, t2 {t2.shape}"
 
+    # Giả định shape = (D,H,W); nếu khác (H,W,D) bạn cần transpose ở đây cho khớp với train.
     vol_4ch = np.stack([flair, t1, t1ce, t2], axis=0)  # (4, D, H, W)
     return vol_4ch.astype(np.float32), flair_nii
 
@@ -157,78 +162,98 @@ def load_label_3d(lbl_path: Path) -> Tuple[np.ndarray, "nib.Nifti1Image"]:
 
 
 # -----------------------------------------------------------------------------
-# Sliding window inference
+# Resize helpers (volume & segmentation)
 # -----------------------------------------------------------------------------
 
-def _compute_steps(dim: int, patch: int, stride: int) -> List[int]:
-    """Tính các vị trí bắt đầu cho sliding window trên 1 trục."""
-    if dim <= patch:
-        return [0]
-    steps = list(range(0, dim - patch + 1, stride))
-    if steps[-1] != dim - patch:
-        steps.append(dim - patch)
-    return steps
+def resize_vol_4ch_to_target(
+    vol_4ch: np.ndarray,
+    target_shape: Tuple[int, int, int],
+) -> np.ndarray:
+    """
+    Resize volume 4 kênh (4, D0, H0, W0) -> (4, Dt, Ht, Wt) bằng trilinear (order=1).
+    """
+    C, D0, H0, W0 = vol_4ch.shape
+    Dt, Ht, Wt = target_shape
+    zoom_factors = (
+        Dt / float(D0),
+        Ht / float(H0),
+        Wt / float(W0),
+    )
+    out = np.zeros((C, Dt, Ht, Wt), dtype=np.float32)
+    for c in range(C):
+        out[c] = nd_zoom(vol_4ch[c], zoom=zoom_factors, order=1)
+    return out.astype(np.float32)
 
+
+def resize_seg_to_target(
+    seg: np.ndarray,
+    target_shape: Tuple[int, int, int],
+) -> np.ndarray:
+    """
+    Resize segmentation rời rạc (D1,H1,W1) -> (D0,H0,W0) bằng nearest (order=0).
+    """
+    D1, H1, W1 = seg.shape
+    D0, H0, W0 = target_shape
+    zoom_factors = (
+        D0 / float(D1),
+        H0 / float(H1),
+        W0 / float(W1),
+    )
+    seg_resized = nd_zoom(seg.astype(np.int16), zoom=zoom_factors, order=0)
+    return seg_resized.astype(np.int16)
+
+
+# -----------------------------------------------------------------------------
+# Full-volume inference (resize -> model -> resize back)
+# -----------------------------------------------------------------------------
 
 @torch.no_grad()
-def sliding_window_multiclass(
+def infer_full_volume_with_resize(
     model: torch.nn.Module,
     vol_4ch: np.ndarray,
-    patch_size: Tuple[int, int, int],
-    stride: Tuple[int, int, int],
+    target_size: Tuple[int, int, int],
     device: torch.device,
     num_classes: int = 4,
 ) -> np.ndarray:
     """
-    vol_4ch: (4, D, H, W)
-    Trả về:
-        prob_vol: (C, D, H, W) - xác suất mỗi lớp (softmax trung bình chồng chéo).
+    vol_4ch: (4, D0, H0, W0)  - kích thước BAN ĐẦU (data/processed_task01/...)
+    target_size: (Dt, Ht, Wt) - kích thước vào mạng (ví dụ 128x128x128)
+
+    Pipeline:
+        1. Resize vol_4ch -> vol_resized (4,Dt,Ht,Wt)
+        2. Forward model -> logits (1,C,Dt,Ht,Wt)
+        3. Softmax + argmax -> seg_resized (Dt,Ht,Wt)
+        4. Resize seg_resized -> seg_back (D0,H0,W0)
     """
     model.eval()
 
-    C_in, D, H, W = vol_4ch.shape
-    pd, ph, pw = patch_size
-    sd, sh, sw = stride
+    C, D0, H0, W0 = vol_4ch.shape
+    Dt, Ht, Wt = target_size
 
-    steps_d = _compute_steps(D, pd, sd)
-    steps_h = _compute_steps(H, ph, sh)
-    steps_w = _compute_steps(W, pw, sw)
+    # Step 1: resize volume vào kích thước mạng
+    vol_resized = resize_vol_4ch_to_target(vol_4ch, target_size)  # (4,Dt,Ht,Wt)
 
-    prob_sum = np.zeros((num_classes, D, H, W), dtype=np.float32)
-    count = np.zeros((D, H, W), dtype=np.float32)
+    # Step 2: forward
+    x = torch.from_numpy(vol_resized[None, ...]).to(device)  # (1,4,Dt,Ht,Wt)
+    out = model(x)
+    if isinstance(out, dict):
+        logits = out["seg"]
+    else:
+        logits = out  # (1,C,Dt,Ht,Wt)
 
-    for z in steps_d:
-        for y in steps_h:
-            for x in steps_w:
-                patch = vol_4ch[:, z:z+pd, y:y+ph, x:x+pw]  # (4, pd, ph, pw)
-                patch_t = torch.from_numpy(patch[None, ...]).to(device)  # (1,4,*,*,*)
+    # Step 3: softmax + argmax
+    probs = torch.softmax(logits, dim=1)  # (1,C,Dt,Ht,Wt)
+    probs_np = probs.cpu().numpy()[0]     # (C,Dt,Ht,Wt)
+    seg_resized = np.argmax(probs_np, axis=0).astype(np.int16)  # (Dt,Ht,Wt)
 
-                out = model(patch_t)  # (1, C, pd, ph, pw) hoặc dict["seg"]
-                if isinstance(out, dict):
-                    logits = out["seg"]
-                else:
-                    logits = out
+    # Step 4: resize seg về kích thước BAN ĐẦU (D0,H0,W0)
+    seg_back = resize_seg_to_target(seg_resized, (D0, H0, W0))  # (D0,H0,W0)
 
-                probs = torch.softmax(logits, dim=1).cpu().numpy()[0]  # (C, pd, ph, pw)
-
-                prob_sum[:, z:z+pd, y:y+ph, x:x+pw] += probs
-                count[z:z+pd, y:y+ph, x:x+pw] += 1.0
-
-    count[count == 0] = 1.0
-    prob_vol = prob_sum / count[None, ...]
-    return prob_vol
-
-
-def probs_to_seg(prob_vol: np.ndarray) -> np.ndarray:
-    """
-    prob_vol: (C, D, H, W) -> seg: (D,H,W) int16 = argmax.
-    """
-    seg = np.argmax(prob_vol, axis=0).astype(np.int16)
-    return seg
+    return seg_back
 
 
 # -----------------------------------------------------------------------------
-# Metrics (Dice, IoU, ASD, HD95) cho nhị phân WT/TC/ET
+# Metrics (Dice, IoU, ASD, HD95) cho WT/TC/ET
 # -----------------------------------------------------------------------------
 
 def compute_binary_metrics(
@@ -332,19 +357,21 @@ def main():
     test_list_path = split_root / CFG_INFER["TEST_LIST"]
 
     exp_name = CFG_INFER["EXP_NAME"]
-    ckpt_path = ROOT / "experiments" / exp_name / "checkpoints_diceloss" / CFG_INFER["CKPT_NAME"] ####
+    # Chú ý: folder ckpt phải khớp với train (celoss/diceloss/...)
+    ckpt_path = ROOT / "experiments" / exp_name / "checkpoints" / CFG_INFER["CKPT_NAME"]
     out_dir = ROOT / CFG_INFER["OUT_DIR"]
     out_pred_dir = out_dir / "preds"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_pred_dir.mkdir(parents=True, exist_ok=True)
 
-    print("=== INFERENCE VNet BraTS3D ===")
+    print("=== INFERENCE VNet BraTS3D (FULL-VOLUME + RESIZE BACK) ===")
     print(f"ROOT:           {ROOT}")
     print(f"Data root 3D:   {data_root_3d}")
     print(f"Test list:      {test_list_path}")
     print(f"Checkpoint:     {ckpt_path}")
     print(f"Out dir:        {out_dir}")
     print(f"Device:         {device}")
+    print(f"Net volume sz:  {CFG_INFER['VOLUME_SIZE']}")
 
     # ---- Read test IDs ----
     test_ids = read_case_list(test_list_path)
@@ -356,7 +383,7 @@ def main():
         n_channels=4,
         n_classes=4,
         n_filters=16,          # giống CFG["VNET"]["n_filters"] trong train
-        normalization="groupnorm",
+        normalization="batchnorm",
         has_dropout=True,
     ).to(device)
 
@@ -364,11 +391,10 @@ def main():
     model.load_state_dict(ckpt["state_dict"])
     print(f"[CKPT] Loaded model from {ckpt_path}")
 
-    patch_size = tuple(CFG_INFER["PATCH_SIZE"])
-    stride = tuple(CFG_INFER["STRIDE"])
+    target_size = tuple(CFG_INFER["VOLUME_SIZE"])
 
     # ---- CSV ----
-    csv_path = out_dir / "metrics_vnet_test.csv"
+    csv_path = out_dir / "metrics_vnet_test_fullvol_resize_back.csv"
     csv_headers = [
         "case_id",
         # WT
@@ -405,13 +431,13 @@ def main():
         gt_seg, lbl_nii = load_label_3d(lbl_path)
         spacing = lbl_nii.header.get_zooms()[:3]
 
-        # ---- Sliding window inference ----
-        prob_vol = sliding_window_multiclass(
-            model, vol_4ch, patch_size, stride, device, num_classes=4
+        # ---- Full-volume inference với resize trước/sau ----
+        pred_seg = infer_full_volume_with_resize(
+            model, vol_4ch, target_size, device, num_classes=4
         )
-        pred_seg = probs_to_seg(prob_vol)
+        # pred_seg đã ở kích thước BAN ĐẦU (D0,H0,W0), cùng shape với gt_seg
 
-        # ---- Lưu NIfTI dự đoán ----
+        # ---- Lưu NIfTI dự đoán (ở kích thước ban đầu) ----
         pred_nii = nib.Nifti1Image(pred_seg.astype(np.int16),
                                    affine=img_nii.affine,
                                    header=img_nii.header)
@@ -432,7 +458,7 @@ def main():
         ]
         csv_rows.append(row)
 
-        for key, val in zip(csv_headers[1:], row[1:]):
+        for key, val in zip(csv_headers[1:], row[1:]):  # bỏ case_id
             metrics_all[key].append(val)
 
     # ---- Save CSV ----

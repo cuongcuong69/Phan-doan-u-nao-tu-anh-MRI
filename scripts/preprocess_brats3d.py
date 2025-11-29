@@ -47,7 +47,7 @@ MOD_SUFFIX = {
 # ---- CHỌN CHẾ ĐỘ CHUẨN HÓA ----
 # "minmax" : chuẩn hóa về [0,1] theo min–max trên non-zero
 # "zscore" : chuẩn hóa theo z-score trên non-zero (mean=0, std=1, có thể clip)
-NORM_MODE = "zscore"   # hoặc "zscore"
+NORM_MODE = "minmax"   # hoặc "zscore"
 
 # Nếu dùng z-score, có thể clip giá trị để tránh outlier quá lớn
 # Đặt thành None nếu không muốn clip

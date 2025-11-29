@@ -7,3 +7,6 @@
 *.pth
 *.pkl
 *.tar
+/experiments/eda/
+/scripts/eda/
+/data/processed_task01/

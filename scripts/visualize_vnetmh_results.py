@@ -40,8 +40,8 @@ from medpy import metric
 # CONFIG
 # =============================================================================
 CFG_VIS: Dict[str, Any] = {
-    "CASE_ID": "Brain_026",
-    "BASE_MODALITY": "t1ce",
+    "CASE_ID": "Brain_011",
+    "BASE_MODALITY": "flair",
 
     # Số lát sẽ vẽ / danh sách lát cố định
     "NUM_SLICES": 6,

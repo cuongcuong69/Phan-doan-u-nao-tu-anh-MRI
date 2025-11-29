@@ -43,7 +43,7 @@ CFG_INFER: Dict[str, Any] = {
 
     # Patch & stride
     "PATCH_SIZE": (128, 128, 128),   # (D, H, W)
-    "STRIDE": (128, 128, 128),          # (Dz, Dy, Dx) - bạn có thể đổi thành (50,50,50) nếu muốn
+    "STRIDE": (20, 20, 20),          # (Dz, Dy, Dx) - bạn có thể đổi thành (50,50,50) nếu muốn
 
     # Đường dẫn tương đối (theo ROOT)
     "DATA_ROOT_3D": "data/processed/3d/labeled",
