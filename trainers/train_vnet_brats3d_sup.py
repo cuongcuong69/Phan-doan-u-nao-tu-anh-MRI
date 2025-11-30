@@ -7,15 +7,17 @@ Huấn luyện VNet 3D đa lớp cho BraTS2020 (4 modality, 4 lớp seg).
 - Dataloader: data/dataloader_brats3d_sup.py (build_brats3d_sup_*_loader).
 - Model: models.vnet.VNet (n_channels=4, n_classes=4).
 - Loss: CE / Dice / Dice+CE (w_ce, w_dice).
-- Tùy chọn SDF loss: nếu model trả ra {"seg": logits, "sdf": sdf_pred} và dataset có "sdf".
 
 Tích hợp:
 - tqdm.auto cho progress bar
 - wandb để log (nếu có)
-- Eval mỗi EVAL_EVERY epoch, tính multi-class Dice
+- Eval mỗi EVAL_EVERY epoch:
+    + multi-class Dice theo lớp (1,2,3) và mean_fg
+    + Dice trên WT, TC, ET (theo định nghĩa BraTS)
 - Lưu best/last checkpoints, snapshot mỗi SAVE_EVERY epoch
 - Resume từ checkpoint (RESUME_CKPT)
-- Giảm LR: sau LR_DECAY_START và mỗi LR_DECAY_EVERY epoch nhân LR với LR_DECAY_FACTOR
+- Giảm LR: nếu val_dice_struct = avg(WT,TC,ET) không cải thiện sau `patience` lần eval
+  thì nhân LR với `factor` (ở đây = 0.5).
 """
 
 from __future__ import annotations
@@ -50,16 +52,16 @@ except ImportError:
 CFG: Dict[str, Any] = {
 
     # --------------------- Experiment ---------------------
-    "EXP_NAME": "brats3d_vnet_sup2",
+    "EXP_NAME": "brats3d_vnet_sup",
     "SEED": 2025,
 
     # --------------------- Data ---------------------
-    "PATCH_SIZE": (64, 64, 64), # (D,H,W)
+    "PATCH_SIZE": (128, 128, 128),  # (D,H,W)
 
-    "TRAIN_BATCH": 8,
-    "VAL_BATCH": 4,
-    "NUM_WORKERS_TRAIN": 0,
-    "NUM_WORKERS_VAL": 0,
+    "TRAIN_BATCH": 2,
+    "VAL_BATCH": 2,
+    "NUM_WORKERS_TRAIN": 4,
+    "NUM_WORKERS_VAL": 4,
 
     "NUM_CHANNELS": 4,   # FLAIR, T1, T1CE, T2
     "NUM_CLASSES": 4,    # 0,1,2,3 (sau khi map 4 -> 3)
@@ -68,8 +70,8 @@ CFG: Dict[str, Any] = {
     "VNET": {
         "n_channels": 4,
         "n_classes": 4,
-        "n_filters": 32,
-        "normalization": "instancenorm",  # "batchnorm" | "groupnorm" | "instancenorm" | "none"
+        "n_filters": 16,
+        "normalization": "groupnorm",  # "batchnorm" | "groupnorm" | "instancenorm" | "none"
         "has_dropout": True,
     },
 
@@ -81,44 +83,39 @@ CFG: Dict[str, Any] = {
         "MAX_EPOCH": 200,
     },
 
-    # --------------------- LR Scheduler (multi-step) ---------------------
-    # Giảm LR bằng cách nhân LR_DECAY_FACTOR sau LR_DECAY_START
-    # và sau đó MỖI LR_DECAY_EVERY epoch.
+    # --------------------- LR Scheduler (reduce on plateau) ---------------------
+    # Giảm LR nếu val_dice_struct (avg Dice WT/TC/ET) không cải thiện sau 'patience' lần eval.
     "LR_SCHED": {
         "use": True,
-        "start_epoch": 50,        # bắt đầu giảm từ epoch này
-        "every": 50,              # sau mỗi N epoch lại giảm (50, 100, 150, ...)
-        "factor": 0.5,            # LR = LR * factor (0.1 => giảm 10 lần)
+        "factor": 0.5,     # LR = LR * factor
+        "patience": 8,    # số lần eval liên tiếp không cải thiện => giảm LR
+        "min_epoch": 20,   # chỉ bắt đầu xem xét giảm LR sau epoch này
     },
 
     # --------------------- Loss ---------------------
     "LOSS": {
         # "ce" | "dice" | "dicece"
-        "loss_type": "dicece",
+        "loss_type": "ce",
 
         "w_dice": 1.0,
         "w_ce": 1.0,
-
-        # chỉ dùng nếu model có nhánh SDF riêng
-        "use_sdf_loss": False,
-        "w_sdf": 0.1,
     },
 
     # --------------------- Sampling (patch) ---------------------
     # sampling_mode: "random"|"rejection"|"center_fg"|"mixed"
     "TRAIN_SAMPLING_MODE": "mixed",
-    "VAL_SAMPLING_MODE": "mixed",   # bạn yêu cầu val cũng mixed
+    "VAL_SAMPLING_MODE": "mixed",
     "REJECTION_THRESH": 0.01,
     "REJECTION_MAX": 8,
-    "TRAIN_MIXED_WEIGHTS": {"center_fg": 0.3, "random": 0.7},
+    "TRAIN_MIXED_WEIGHTS": {"center_fg": 0.5, "random": 0.5},
     "VAL_MIXED_WEIGHTS":   {"center_fg": 0.5, "random": 0.5},
 
     # --------------------- Validation ---------------------
-    "EVAL_EVERY": 5,   # validate mỗi epoch
+    "EVAL_EVERY": 1,   # validate mỗi epoch
 
     # --------------------- Checkpoint ---------------------
-    "SAVE_EVERY": 25,
-    "RESUME_CKPT": r"D:\Project Advanced CV\experiments\brats3d_vnet_sup2\checkpoints\last_checkpoint_VNet_sup.pth",     # đường dẫn ckpt để resume (nếu có)
+    "SAVE_EVERY": 1000,
+    "RESUME_CKPT": "",
 
     # --------------------- WandB ---------------------
     "WANDB": {
@@ -151,7 +148,7 @@ from models.vnet import VNet
 
 
 # =============================================================================
-# Local utilities: AverageMeter, Logger, cal_dice
+# Local utilities: AverageMeter, Logger, cal_dice, region dice
 # =============================================================================
 
 class AverageMeter:
@@ -203,6 +200,48 @@ def cal_dice(prediction: np.ndarray, label: np.ndarray, num: int = 2) -> np.ndar
     return total_dice
 
 
+def dice_binary_torch(pred_bin: torch.Tensor, gt_bin: torch.Tensor, eps: float = 1e-5) -> torch.Tensor:
+    """
+    Dice nhị phân cho mask torch.bool / 0-1.
+    pred_bin, gt_bin: cùng shape (B,D,H,W) hoặc (N,...).
+    """
+    pred_f = pred_bin.float()
+    gt_f = gt_bin.float()
+    intersection = (pred_f * gt_f).sum()
+    den = pred_f.sum() + gt_f.sum()
+    if den.item() == 0:
+        # cả pred & gt rỗng => xem như Dice = 1.0
+        return torch.tensor(1.0, device=pred_bin.device)
+    return (2.0 * intersection + eps) / (den + eps)
+
+
+def brats_region_dice_torch(pred: torch.Tensor, gt: torch.Tensor) -> Dict[str, float]:
+    """
+    Tính Dice WT/TC/ET trên tensor Torch (patch-level).
+
+    pred, gt: (B,D,H,W) với nhãn 0..3
+      - WT: label > 0
+      - TC: label == 1 or 3
+      - ET: label == 3
+    """
+    # WT
+    mp_wt = (pred > 0)
+    mg_wt = (gt > 0)
+    dice_wt = dice_binary_torch(mp_wt, mg_wt).item()
+
+    # TC
+    mp_tc = (pred == 1) | (pred == 3)
+    mg_tc = (gt == 1) | (gt == 3)
+    dice_tc = dice_binary_torch(mp_tc, mg_tc).item()
+
+    # ET
+    mp_et = (pred == 3)
+    mg_et = (gt == 3)
+    dice_et = dice_binary_torch(mp_et, mg_et).item()
+
+    return {"wt": dice_wt, "tc": dice_tc, "et": dice_et}
+
+
 # =============================================================================
 # Utility: seed, device, dice loss
 # =============================================================================
@@ -236,9 +275,9 @@ def multiclass_dice_loss(
     logits: (N,C,D,H,W)
     targets: (N,D,H,W) [0..C-1]
     """
-    probs = torch.softmax(logits, dim=1)               # (N,C,D,H,W)
+    probs = torch.softmax(logits, dim=1)  # (N,C,D,H,W)
     one_hot = F.one_hot(targets.long(), num_classes=num_classes)  # (N,D,H,W,C)
-    one_hot = one_hot.permute(0, 4, 1, 2, 3).float()             # (N,C,D,H,W)
+    one_hot = one_hot.permute(0, 4, 1, 2, 3).float()  # (N,C,D,H,W)
 
     dims = (0, 2, 3, 4)
     intersection = torch.sum(probs * one_hot, dims)
@@ -290,7 +329,6 @@ def build_loaders():
         patch_size=patch_size,
         batch_size=CFG["TRAIN_BATCH"],
         num_workers=CFG["NUM_WORKERS_TRAIN"],
-        with_sdf=False,  # nếu dataset có SDF, bật True & sửa dataloader
         sampling_mode=CFG["TRAIN_SAMPLING_MODE"],
         rejection_thresh=CFG["REJECTION_THRESH"],
         rejection_max=CFG["REJECTION_MAX"],
@@ -302,7 +340,6 @@ def build_loaders():
         patch_size=patch_size,
         batch_size=CFG["VAL_BATCH"],
         num_workers=CFG["NUM_WORKERS_VAL"],
-        with_sdf=False,    # tương tự
         sampling_mode=CFG["VAL_SAMPLING_MODE"],
         rejection_thresh=CFG["REJECTION_THRESH"],
         rejection_max=CFG["REJECTION_MAX"],
@@ -313,29 +350,57 @@ def build_loaders():
 
 
 # =============================================================================
-# LR scheduler helper
+# LR scheduler: reduce on plateau (val_dice_struct)
 # =============================================================================
 
-def maybe_adjust_lr(optimizer: optim.Optimizer, epoch: int, wandb_run=None):
+def maybe_reduce_lr_on_plateau(
+    optimizer: optim.Optimizer,
+    cur_metric: float | None,
+    lr_state: Dict[str, Any],
+    epoch: int,
+    wandb_run=None,
+):
     """
-    Giảm LR bằng cách nhân factor sau start_epoch
-    và sau đó mỗi 'every' epoch.
-    Ví dụ: start_epoch=50, every=50, factor=0.1
-    => lr giảm ở epoch 50, 100, 150, ...
+    Giảm LR nếu cur_metric (val_dice_struct) không cải thiện sau 'patience' lần eval.
+    lr_state gồm:
+      - 'best_metric': best val_dice_struct đã thấy
+      - 'epochs_no_improve': số lần eval liên tiếp không cải thiện
     """
     scfg = CFG["LR_SCHED"]
-    if not scfg["use"]:
+    if not scfg.get("use", False):
         return
 
-    start = int(scfg["start_epoch"])
-    every = int(scfg["every"])
-    factor = float(scfg["factor"])
+    factor = float(scfg.get("factor", 0.5))
+    patience = int(scfg.get("patience", 10))
+    min_epoch = int(scfg.get("min_epoch", 0))
 
-    if epoch >= start and (epoch - start) % every == 0:
+    if cur_metric is None:
+        return
+    if epoch < min_epoch:
+        return
+
+    best_metric = lr_state.get("best_metric", 0.0)
+    epochs_no_improve = lr_state.get("epochs_no_improve", 0)
+
+    # Nếu cải thiện thì reset counter + update best_metric
+    if cur_metric > best_metric + 1e-6:
+        lr_state["best_metric"] = cur_metric
+        lr_state["epochs_no_improve"] = 0
+        return
+
+    # Không cải thiện
+    epochs_no_improve += 1
+    lr_state["epochs_no_improve"] = epochs_no_improve
+
+    if epochs_no_improve >= patience:
+        # Giảm LR
         for pg in optimizer.param_groups:
             pg["lr"] *= factor
         new_lr = optimizer.param_groups[0]["lr"]
-        print(f"[LR] Epoch {epoch}: giảm LR, nhân {factor}, LR mới = {new_lr:.6g}")
+        print(f"[LR] Epoch {epoch}: val_dice_struct không cải thiện {patience} lần eval, "
+              f"giảm LR nhân {factor}, LR mới = {new_lr:.6g}")
+        lr_state["epochs_no_improve"] = 0  # reset sau khi giảm
+
         if wandb_run is not None:
             wandb_run.log({"lr": new_lr, "lr/epoch": epoch})
 
@@ -351,10 +416,8 @@ def train_one_epoch(
     device: torch.device,
     epoch: int,
     max_epoch: int,
-    use_sdf_loss: bool,
     w_dice: float,
     w_ce: float,
-    w_sdf: float,
     loss_type: str,
     wandb_run=None,
 ) -> Dict[str, float]:
@@ -363,7 +426,10 @@ def train_one_epoch(
     loss_meter = AverageMeter()
     ce_meter = AverageMeter()
     dice_meter = AverageMeter()
-    sdf_meter = AverageMeter()
+
+    dice_wt_meter = AverageMeter()
+    dice_tc_meter = AverageMeter()
+    dice_et_meter = AverageMeter()
 
     pbar = tqdm(loader, desc=f"[Train] Epoch {epoch}/{max_epoch}")
 
@@ -378,15 +444,13 @@ def train_one_epoch(
         out = model(images)
         if isinstance(out, dict):
             logits = out["seg"]
-            sdf_pred = out.get("sdf", None)
         else:
             logits = out
-            sdf_pred = None
 
         # CE
         ce_loss = F.cross_entropy(logits, labels)
 
-        # Dice
+        # Dice (multi-class)
         dice_loss_val = multiclass_dice_loss(
             logits, labels, num_classes=num_classes, ignore_bg=True
         )
@@ -401,27 +465,33 @@ def train_one_epoch(
         else:
             raise ValueError(f"LOSS.loss_type không hợp lệ: {loss_type}")
 
-        # optional SDF auxiliary loss
-        sdf_loss_val = torch.tensor(0.0, device=device)
-        if use_sdf_loss and sdf_pred is not None and ("sdf" in batch):
-            sdf_gt = batch["sdf"].to(device).float()  # (B,1,D,H,W)
-            sdf_loss_val = F.smooth_l1_loss(sdf_pred, sdf_gt)
-            loss = loss + w_sdf * sdf_loss_val
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+        # ---- region Dice (WT / TC / ET) trên patch hiện tại ----
+        with torch.no_grad():
+            preds = torch.argmax(logits, dim=1)  # (B,D,H,W)
+            region_d = brats_region_dice_torch(preds, labels)
+            dice_wt = region_d["wt"]
+            dice_tc = region_d["tc"]
+            dice_et = region_d["et"]
+
         # update meters
-        loss_meter.update(loss.item(), images.size(0))
-        ce_meter.update(ce_loss.item(), images.size(0))
-        dice_meter.update(dice_loss_val.item(), images.size(0))
-        sdf_meter.update(sdf_loss_val.item(), images.size(0))
+        bs = images.size(0)
+        loss_meter.update(loss.item(), bs)
+        ce_meter.update(ce_loss.item(), bs)
+        dice_meter.update(dice_loss_val.item(), bs)
+
+        dice_wt_meter.update(dice_wt, bs)
+        dice_tc_meter.update(dice_tc, bs)
+        dice_et_meter.update(dice_et, bs)
 
         pbar.set_postfix({
             "loss": f"{loss_meter.avg:.4f}",
             "ce_loss": f"{ce_meter.avg:.4f}",
             "dice_loss": f"{dice_meter.avg:.4f}",
+            "dice(WT/TC/ET)": f"{dice_wt_meter.avg:.3f}/{dice_tc_meter.avg:.3f}/{dice_et_meter.avg:.3f}",
         })
 
         if wandb_run is not None:
@@ -429,7 +499,9 @@ def train_one_epoch(
                 "train/loss": loss.item(),
                 "train/ce_loss": ce_loss.item(),
                 "train/dice_loss": dice_loss_val.item(),
-                "train/sdf_loss": sdf_loss_val.item(),
+                "train/dice_wt": dice_wt,
+                "train/dice_tc": dice_tc,
+                "train/dice_et": dice_et,
                 "train/epoch": epoch,
             })
 
@@ -437,7 +509,9 @@ def train_one_epoch(
         "loss": loss_meter.avg,
         "ce_loss": ce_meter.avg,
         "dice_loss": dice_meter.avg,
-        "sdf_loss": sdf_meter.avg,
+        "dice_wt": dice_wt_meter.avg,
+        "dice_tc": dice_tc_meter.avg,
+        "dice_et": dice_et_meter.avg,
     }
 
 
@@ -462,6 +536,11 @@ def validate(
     dice_class_sum = np.zeros(num_classes - 1, dtype=np.float64)
     dice_class_cnt = 0
 
+    # theo dõi region dice WT/TC/ET (torch-level, patch-based)
+    dice_wt_meter = AverageMeter()
+    dice_tc_meter = AverageMeter()
+    dice_et_meter = AverageMeter()
+
     pbar = tqdm(loader, desc=f"[Val]   Epoch {epoch}/{max_epoch}")
 
     for batch in pbar:
@@ -481,12 +560,24 @@ def validate(
         )
         loss = ce + dice_l  # val loss = CE + Dice cho đơn giản
 
-        loss_meter.update(loss.item(), images.size(0))
-        ce_meter.update(ce.item(), images.size(0))
-        dice_loss_meter.update(dice_l.item(), images.size(0))
+        bs = images.size(0)
+        loss_meter.update(loss.item(), bs)
+        ce_meter.update(ce.item(), bs)
+        dice_loss_meter.update(dice_l.item(), bs)
 
-        # chuyển về numpy để tính dice per-class (cal_dice)
-        preds = torch.argmax(logits, dim=1).detach().cpu().numpy()  # (B,D,H,W)
+        # ---- region Dice (WT / TC / ET) ----
+        preds_t = torch.argmax(logits, dim=1)  # (B,D,H,W)
+        region_d = brats_region_dice_torch(preds_t, labels)
+        dice_wt = region_d["wt"]
+        dice_tc = region_d["tc"]
+        dice_et = region_d["et"]
+
+        dice_wt_meter.update(dice_wt, bs)
+        dice_tc_meter.update(dice_tc, bs)
+        dice_et_meter.update(dice_et, bs)
+
+        # ---- multi-class dice per-class via numpy (như cũ) ----
+        preds = preds_t.detach().cpu().numpy()
         gts = labels.detach().cpu().numpy()
 
         for b in range(preds.shape[0]):
@@ -496,13 +587,17 @@ def validate(
             dice_class_cnt += 1
 
         mean_dice_fg = (dice_class_sum / max(1, dice_class_cnt)).mean()
+        mean_dice_struct = (dice_wt_meter.avg + dice_tc_meter.avg + dice_et_meter.avg) / 3.0
 
         pbar.set_postfix({
             "loss": f"{loss_meter.avg:.4f}",
-            "mean_dice": f"{mean_dice_fg:.4f}",
+            "mean_dice_fg": f"{mean_dice_fg:.4f}",
+            "dice(WT/TC/ET)": f"{dice_wt_meter.avg:.3f}/{dice_tc_meter.avg:.3f}/{dice_et_meter.avg:.3f}",
+            "dice_struct": f"{mean_dice_struct:.3f}",
         })
 
     mean_dice_fg_vec = dice_class_sum / max(1, dice_class_cnt)
+    mean_dice_struct = (dice_wt_meter.avg + dice_tc_meter.avg + dice_et_meter.avg) / 3.0
 
     if wandb_run is not None:
         log_dict = {
@@ -510,10 +605,14 @@ def validate(
             "val/ce_loss": ce_meter.avg,
             "val/dice_loss": dice_loss_meter.avg,
             "val/mean_dice_fg": float(mean_dice_fg_vec.mean()),
+            "val/dice_wt": dice_wt_meter.avg,
+            "val/dice_tc": dice_tc_meter.avg,
+            "val/dice_et": dice_et_meter.avg,
+            "val/dice_struct": mean_dice_struct,
             "val/epoch": epoch,
         }
         for c in range(1, num_classes):
-            log_dict[f"val/dice_class_{c}"] = float(mean_dice_fg_vec[c-1])
+            log_dict[f"val/dice_class_{c}"] = float(mean_dice_fg_vec[c - 1])
         wandb_run.log(log_dict)
 
     return {
@@ -521,6 +620,10 @@ def validate(
         "ce_loss": ce_meter.avg,
         "dice_loss": dice_loss_meter.avg,
         "mean_dice_fg": float(mean_dice_fg_vec.mean()),
+        "dice_wt": dice_wt_meter.avg,
+        "dice_tc": dice_tc_meter.avg,
+        "dice_et": dice_et_meter.avg,
+        "dice_struct": mean_dice_struct,
     }
 
 
@@ -564,8 +667,8 @@ def main():
 
     exp_name = CFG["EXP_NAME"]
     exp_dir = ROOT / "experiments" / exp_name
-    ckpt_dir = exp_dir / "checkpoints"
-    log_dir = exp_dir / "logs"
+    ckpt_dir = exp_dir / "checkpoints_celoss" #####
+    log_dir = exp_dir / "logs_celoss" ####
     exp_dir.mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -575,8 +678,8 @@ def main():
     print(f"Device:    {device}")
 
     # Logger (pickle)
-    train_logger = Logger(str(log_dir / "train_log.pkl"))
-    val_logger = Logger(str(log_dir / "val_log.pkl"))
+    train_logger = Logger(str(log_dir / "train_log_celoss.pkl")) ####
+    val_logger = Logger(str(log_dir / "val_log_celoss.pkl"))#####
 
     # wandb
     use_wandb = CFG["WANDB"]["use_wandb"] and _HAS_WANDB
@@ -604,11 +707,10 @@ def main():
     loss_type = loss_cfg["loss_type"].lower()
     w_dice = float(loss_cfg["w_dice"])
     w_ce = float(loss_cfg["w_ce"])
-    use_sdf_loss = bool(loss_cfg["use_sdf_loss"])
-    w_sdf = float(loss_cfg["w_sdf"])
 
     # resume
     start_epoch = 1
+    # best_val_dice dùng tiêu chí avg(WT,TC,ET) giống multi-enc/multihead
     best_val_dice = 0.0
     resume_ckpt = CFG.get("RESUME_CKPT", "")
     if resume_ckpt and os.path.isfile(resume_ckpt):
@@ -616,7 +718,14 @@ def main():
             model, optimizer, resume_ckpt, device
         )
 
-    print(f"[INFO] Start training from epoch {start_epoch} / {max_epoch}, best_val_dice={best_val_dice:.4f}")
+    # state cho LR scheduler (reduce on plateau)
+    lr_state: Dict[str, Any] = {
+        "best_metric": best_val_dice,
+        "epochs_no_improve": 0,
+    }
+
+    print(f"[INFO] Start training from epoch {start_epoch} / {max_epoch}, "
+          f"best_val_dice={best_val_dice:.4f}")
 
     # main loop
     for epoch in range(start_epoch, max_epoch + 1):
@@ -625,10 +734,8 @@ def main():
         # ---- Train ----
         train_stats = train_one_epoch(
             model, optimizer, train_loader, device, epoch, max_epoch,
-            use_sdf_loss=use_sdf_loss,
             w_dice=w_dice,
             w_ce=w_ce,
-            w_sdf=w_sdf,
             loss_type=loss_type,
             wandb_run=wandb_run,
         )
@@ -638,6 +745,7 @@ def main():
         # ---- Eval (nếu đến kỳ) ----
         do_eval = (epoch % CFG["EVAL_EVERY"] == 0)
         val_stats = None
+        cur_dice_struct = None
         if do_eval:
             val_stats = validate(
                 model, val_loader, device, epoch, max_epoch,
@@ -646,9 +754,11 @@ def main():
             val_stats["epoch"] = epoch
             val_logger.log(val_stats)
 
-            cur_dice = val_stats["mean_dice_fg"]
-            if cur_dice > best_val_dice:
-                best_val_dice = cur_dice
+            cur_dice_struct = val_stats["dice_struct"]  # avg(WT,TC,ET)
+
+            # chọn best checkpoint theo val_dice_struct
+            if cur_dice_struct > best_val_dice:
+                best_val_dice = cur_dice_struct
                 save_checkpoint(
                     {
                         "epoch": epoch,
@@ -660,6 +770,15 @@ def main():
                     ckpt_dir,
                     "best_checkpoint_VNet_sup.pth",
                 )
+
+            # giảm LR nếu cần (reduce on plateau)
+            maybe_reduce_lr_on_plateau(
+                optimizer,
+                cur_metric=cur_dice_struct,
+                lr_state=lr_state,
+                epoch=epoch,
+                wandb_run=wandb_run,
+            )
 
         # ---- Save last + snapshot ----
         save_checkpoint(
@@ -687,13 +806,21 @@ def main():
                 f"epoch_{epoch:03d}_VNet_sup.pth",
             )
 
-        # ---- Giảm LR nếu tới mốc (50, 100, 150, ...) ----
-        maybe_adjust_lr(optimizer, epoch, wandb_run=wandb_run)
-
         dt = time.time() - t0
-        msg = f"[Epoch {epoch}/{max_epoch}] train_loss={train_stats['loss']:.4f}"
+        msg = (
+            f"[Epoch {epoch}/{max_epoch}] "
+            f"train_loss={train_stats['loss']:.4f} "
+            f"| train_dice(WT/TC/ET)={train_stats['dice_wt']:.3f}/"
+            f"{train_stats['dice_tc']:.3f}/{train_stats['dice_et']:.3f}"
+        )
         if val_stats is not None:
-            msg += f" | val_loss={val_stats['loss']:.4f} | val_meanDice={val_stats['mean_dice_fg']:.4f}"
+            msg += (
+                f" | val_loss={val_stats['loss']:.4f} "
+                f"| val_meanDiceFG={val_stats['mean_dice_fg']:.4f} "
+                f"| val_dice(WT/TC/ET)={val_stats['dice_wt']:.3f}/"
+                f"{val_stats['dice_tc']:.3f}/{val_stats['dice_et']:.3f} "
+                f"| val_dice_struct={val_stats['dice_struct']:.3f}"
+            )
         msg += f" | time={dt:.1f}s"
         print(msg)
 

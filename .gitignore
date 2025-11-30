@@ -47,3 +47,9 @@ ENV/
 Thumbs.db
 *.tmp
 *.bak
+
+# Others
+*.tar
+/experiments/eda/
+/scripts/eda/
+/data/processed_task01/

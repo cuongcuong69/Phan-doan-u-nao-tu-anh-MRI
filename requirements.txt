@@ -39,3 +39,25 @@ umap-learn>=0.5.0
 
 # Development utilities
 pathlib2>=2.3.0
+
+
+# ---- Pinned exact versions ----
+imageio==2.37.0
+matplotlib==3.10.7
+medpy==0.5.2
+nibabel==5.3.2
+numpy==2.3.5
+opencv_contrib_python==4.12.0.88
+opencv_python==4.12.0.88
+opencv_python_headless==4.12.0.88
+pandas==2.3.3
+plotly==5.24.1
+scikit_learn==1.7.2
+scipy==1.16.3
+seaborn==0.13.2
+simpleitk==2.5.2
+scikit-image==0.24.0
+torch==2.5.1+cu121
+tqdm==4.67.1
+ultralytics_thop==2.0.17
+umap_learn==0.5.9.post2

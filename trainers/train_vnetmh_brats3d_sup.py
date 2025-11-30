@@ -20,7 +20,8 @@ Tích hợp:
 - Eval mỗi EVAL_EVERY epoch, tính Dice cho WT/TC/ET
 - Lưu best/last checkpoints, snapshot mỗi SAVE_EVERY epoch
 - Resume từ checkpoint (RESUME_CKPT)
-- Giảm LR: sau LR_DECAY_START và mỗi LR_DECAY_EVERY epoch nhân LR với LR_DECAY_FACTOR
+- Giảm LR: nếu val_dice_struct (mean_dice_all) không cải thiện sau `patience` lần eval
+  thì nhân LR với `factor` (ở đây = 0.5).
 """
 
 from __future__ import annotations
@@ -59,52 +60,46 @@ CFG: Dict[str, Any] = {
     "SEED": 2025,
 
     # --------------------- Data ---------------------
-    "PATCH_SIZE": (64, 64, 64),  # (D,H,W)
+    "PATCH_SIZE": (128, 128, 128),  # (D,H,W)
 
-    "TRAIN_BATCH": 4,
-    "VAL_BATCH": 4,
-    "NUM_WORKERS_TRAIN": 0,
-    "NUM_WORKERS_VAL": 0,
+    "TRAIN_BATCH": 2,
+    "VAL_BATCH": 2,
+    "NUM_WORKERS_TRAIN": 4,
+    "NUM_WORKERS_VAL": 4,
 
     "NUM_CHANNELS": 4,   # FLAIR, T1, T1CE, T2
 
     # --------------------- Model (MultiHead) ---------------------
     "VNET_MH": {
         "n_channels": 4,
-        "n_filters": 32,
-        "normalization": "batchnorm",  # "batchnorm" | "groupnorm" | "instancenorm" | "none"
+        "n_filters": 16,
+        "normalization": "groupnorm",  # "batchnorm" | "groupnorm" | "instancenorm" | "none"
         "has_dropout": True,
     },
 
     # --------------------- Optimizer ---------------------
     "OPTIM": {
-        "LR": 2e-3,
+        "LR": 1e-3,
         "WEIGHT_DECAY": 1e-4,
         "BETAS": (0.9, 0.999),
         "MAX_EPOCH": 200,
     },
 
-    # --------------------- LR Scheduler (multi-step) ---------------------
-    # Giảm LR bằng cách nhân LR_DECAY_FACTOR sau LR_DECAY_START
-    # và sau đó MỖI LR_DECAY_EVERY epoch.
+    # --------------------- LR Scheduler (reduce on plateau) -------------
+    # Giảm LR nếu val_dice_struct (mean_dice_all) không cải thiện sau 'patience' lần eval.
     "LR_SCHED": {
         "use": True,
-        "start_epoch": 50,        # bắt đầu giảm từ epoch này
-        "every": 50,              # sau mỗi N epoch lại giảm (50, 100, 150, ...)
-        "factor": 0.5,            # LR = LR * factor
+        "factor": 0.5,     # LR = LR * factor
+        "patience": 8,     # số lần eval không cải thiện => giảm LR
+        "min_epoch": 20,   # chỉ bắt đầu xem xét giảm LR sau epoch này
     },
 
     # --------------------- Loss ---------------------
     "LOSS": {
         # "ce" | "dice" | "dicece"
         "loss_type": "dicece",
-
         "w_dice": 1.0,
         "w_ce": 1.0,
-
-        # chỉ dùng nếu sau này thêm nhánh SDF
-        "use_sdf_loss": False,
-        "w_sdf": 0.1,
     },
 
     # --------------------- Sampling (patch) ---------------------
@@ -113,14 +108,14 @@ CFG: Dict[str, Any] = {
     "VAL_SAMPLING_MODE": "mixed",
     "REJECTION_THRESH": 0.01,
     "REJECTION_MAX": 8,
-    "TRAIN_MIXED_WEIGHTS": {"center_fg": 0.7, "random": 0.3},
-    "VAL_MIXED_WEIGHTS":   {"center_fg": 0.7, "random": 0.3},
+    "TRAIN_MIXED_WEIGHTS": {"center_fg": 0.5, "random": 0.5},
+    "VAL_MIXED_WEIGHTS":   {"center_fg": 0.5, "random": 0.5},
 
     # --------------------- Validation ---------------------
-    "EVAL_EVERY": 3,   # validate mỗi epoch
+    "EVAL_EVERY": 1,   # validate mỗi epoch
 
     # --------------------- Checkpoint ---------------------
-    "SAVE_EVERY": 25,
+    "SAVE_EVERY": 1000,
     "RESUME_CKPT": "",  # đường dẫn ckpt để resume (nếu có)
 
     # --------------------- WandB ---------------------
@@ -220,15 +215,9 @@ def make_region_labels(labels: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor
       - y_tc: Tumor Core (TC)   : 1 nếu label in {1,3}
       - y_et: Enhancing (ET)    : 1 nếu label==3
     """
-    # WT: tất cả voxel thuộc tumor
     y_wt = (labels > 0).long()
-
-    # TC: Non-enhancing + Enhancing (tuỳ theo mapping, giả sử 1 & 3)
     y_tc = ((labels == 1) | (labels == 3)).long()
-
-    # ET: Enhancing Tumor
     y_et = (labels == 3).long()
-
     return y_wt, y_tc, y_et
 
 
@@ -300,7 +289,6 @@ def build_loaders():
         patch_size=patch_size,
         batch_size=CFG["TRAIN_BATCH"],
         num_workers=CFG["NUM_WORKERS_TRAIN"],
-        with_sdf=False,  # hiện tại chưa dùng SDF
         sampling_mode=CFG["TRAIN_SAMPLING_MODE"],
         rejection_thresh=CFG["REJECTION_THRESH"],
         rejection_max=CFG["REJECTION_MAX"],
@@ -312,7 +300,6 @@ def build_loaders():
         patch_size=patch_size,
         batch_size=CFG["VAL_BATCH"],
         num_workers=CFG["NUM_WORKERS_VAL"],
-        with_sdf=False,
         sampling_mode=CFG["VAL_SAMPLING_MODE"],
         rejection_thresh=CFG["REJECTION_THRESH"],
         rejection_max=CFG["REJECTION_MAX"],
@@ -320,34 +307,6 @@ def build_loaders():
         seed=CFG["SEED"],
     )
     return train_loader, val_loader
-
-
-# =============================================================================
-# LR scheduler helper
-# =============================================================================
-
-def maybe_adjust_lr(optimizer: optim.Optimizer, epoch: int, wandb_run=None):
-    """
-    Giảm LR bằng cách nhân factor sau start_epoch
-    và sau đó mỗi 'every' epoch.
-    Ví dụ: start_epoch=50, every=50, factor=0.5
-    => lr giảm ở epoch 50, 100, 150, ...
-    """
-    scfg = CFG["LR_SCHED"]
-    if not scfg["use"]:
-        return
-
-    start = int(scfg["start_epoch"])
-    every = int(scfg["every"])
-    factor = float(scfg["factor"])
-
-    if epoch >= start and (epoch - start) % every == 0:
-        for pg in optimizer.param_groups:
-            pg["lr"] *= factor
-        new_lr = optimizer.param_groups[0]["lr"]
-        print(f"[LR] Epoch {epoch}: giảm LR, nhân {factor}, LR mới = {new_lr:.6g}")
-        if wandb_run is not None:
-            wandb_run.log({"lr": new_lr, "lr/epoch": epoch})
 
 
 # =============================================================================
@@ -361,10 +320,8 @@ def train_one_epoch(
     device: torch.device,
     epoch: int,
     max_epoch: int,
-    use_sdf_loss: bool,
     w_dice: float,
     w_ce: float,
-    w_sdf: float,
     loss_type: str,
     wandb_run=None,
 ) -> Dict[str, float]:
@@ -386,7 +343,7 @@ def train_one_epoch(
         labels = labels.squeeze(1).long()         # (B,D,H,W)
 
         # Tạo label nhị phân cho từng head
-        y_wt, y_tc, y_et = make_region_labels(labels)  # (B,D,H,W) các binary mask
+        y_wt, y_tc, y_et = make_region_labels(labels)  # (B,D,H,W)
 
         # forward
         out = model(images)  # dict {"wt","tc","et"}
@@ -416,16 +373,6 @@ def train_one_epoch(
         else:
             raise ValueError(f"LOSS.loss_type không hợp lệ: {loss_type}")
 
-        # (option) SDF auxiliary loss - hiện tại model chưa có nhánh SDF
-        sdf_loss_val = torch.tensor(0.0, device=device)
-        if use_sdf_loss and ("sdf" in batch):
-            # placeholder: nếu sau này bạn thêm nhánh sdf_pred trong model
-            # sdf_pred = out.get("sdf", None)
-            # sdf_gt = batch["sdf"].to(device).float()
-            # sdf_loss_val = F.smooth_l1_loss(sdf_pred, sdf_gt)
-            # loss = loss + w_sdf * sdf_loss_val
-            pass
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -434,7 +381,6 @@ def train_one_epoch(
         dice_wt_score = binary_dice_score(logits_wt, y_wt).item()
         dice_tc_score = binary_dice_score(logits_tc, y_tc).item()
         dice_et_score = binary_dice_score(logits_et, y_et).item()
-        dice_score_mean = (dice_wt_score + dice_tc_score + dice_et_score) / 3.0
 
         # update meters
         bs = images.size(0)
@@ -600,6 +546,62 @@ def load_checkpoint(
 
 
 # =============================================================================
+# LR scheduler: reduce on plateau (val_dice_struct)
+# =============================================================================
+
+def maybe_reduce_lr_on_plateau(
+    optimizer: optim.Optimizer,
+    cur_metric: float | None,
+    lr_state: Dict[str, Any],
+    epoch: int,
+    wandb_run=None,
+):
+    """
+    Giảm LR nếu cur_metric (val_dice_struct) không cải thiện sau 'patience' lần eval.
+    lr_state gồm:
+      - 'best_metric': best val_dice_struct đã thấy
+      - 'epochs_no_improve': số lần eval liên tiếp không cải thiện
+    """
+    scfg = CFG["LR_SCHED"]
+    if not scfg.get("use", False):
+        return
+
+    factor = float(scfg.get("factor", 0.5))
+    patience = int(scfg.get("patience", 10))
+    min_epoch = int(scfg.get("min_epoch", 0))
+
+    if cur_metric is None:
+        return
+    if epoch < min_epoch:
+        return
+
+    best_metric = lr_state.get("best_metric", 0.0)
+    epochs_no_improve = lr_state.get("epochs_no_improve", 0)
+
+    # Nếu cải thiện thì reset counter + update best_metric
+    if cur_metric > best_metric + 1e-6:
+        lr_state["best_metric"] = cur_metric
+        lr_state["epochs_no_improve"] = 0
+        return
+
+    # Không cải thiện
+    epochs_no_improve += 1
+    lr_state["epochs_no_improve"] = epochs_no_improve
+
+    if epochs_no_improve >= patience:
+        # Giảm LR
+        for pg in optimizer.param_groups:
+            pg["lr"] *= factor
+        new_lr = optimizer.param_groups[0]["lr"]
+        print(f"[LR] Epoch {epoch}: val_dice_struct không cải thiện {patience} lần eval, "
+              f"giảm LR nhân {factor}, LR mới = {new_lr:.6g}")
+        lr_state["epochs_no_improve"] = 0  # reset sau khi giảm
+
+        if wandb_run is not None:
+            wandb_run.log({"lr": new_lr, "lr/epoch": epoch})
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -609,8 +611,8 @@ def main():
 
     exp_name = CFG["EXP_NAME"]
     exp_dir = ROOT / "experiments" / exp_name
-    ckpt_dir = exp_dir / "checkpoints"
-    log_dir = exp_dir / "logs"
+    ckpt_dir = exp_dir / "checkpoints_dicece"
+    log_dir = exp_dir / "logs_dicece"
     exp_dir.mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -649,19 +651,24 @@ def main():
     loss_type = loss_cfg["loss_type"].lower()
     w_dice = float(loss_cfg["w_dice"])
     w_ce = float(loss_cfg["w_ce"])
-    use_sdf_loss = bool(loss_cfg["use_sdf_loss"])
-    w_sdf = float(loss_cfg["w_sdf"])
 
     # resume
     start_epoch = 1
-    best_val_dice = 0.0
+    best_val_dice = 0.0  # dùng avg(WT,TC,ET) làm tiêu chí chọn best
     resume_ckpt = CFG.get("RESUME_CKPT", "")
     if resume_ckpt and os.path.isfile(resume_ckpt):
         start_epoch, best_val_dice = load_checkpoint(
             model, optimizer, resume_ckpt, device
         )
 
-    print(f"[INFO] Start training from epoch {start_epoch} / {max_epoch}, best_val_dice={best_val_dice:.4f}")
+    # state cho LR scheduler (reduce on plateau)
+    lr_state: Dict[str, Any] = {
+        "best_metric": best_val_dice,
+        "epochs_no_improve": 0,
+    }
+
+    print(f"[INFO] Start training from epoch {start_epoch} / {max_epoch}, "
+          f"best_val_dice={best_val_dice:.4f}")
 
     # main loop
     for epoch in range(start_epoch, max_epoch + 1):
@@ -670,10 +677,8 @@ def main():
         # ---- Train ----
         train_stats = train_one_epoch(
             model, optimizer, train_loader, device, epoch, max_epoch,
-            use_sdf_loss=use_sdf_loss,
             w_dice=w_dice,
             w_ce=w_ce,
-            w_sdf=w_sdf,
             loss_type=loss_type,
             wandb_run=wandb_run,
         )
@@ -683,6 +688,7 @@ def main():
         # ---- Eval (nếu đến kỳ) ----
         do_eval = (epoch % CFG["EVAL_EVERY"] == 0)
         val_stats = None
+        cur_dice_struct = None
         if do_eval:
             val_stats = validate(
                 model, val_loader, device, epoch, max_epoch,
@@ -691,9 +697,11 @@ def main():
             val_stats["epoch"] = epoch
             val_logger.log(val_stats)
 
-            cur_dice = val_stats["mean_dice_all"]
-            if cur_dice > best_val_dice:
-                best_val_dice = cur_dice
+            cur_dice_struct = val_stats["mean_dice_all"]  # WT/TC/ET mean
+
+            # chọn best checkpoint theo cur_dice_struct
+            if cur_dice_struct > best_val_dice:
+                best_val_dice = cur_dice_struct
                 save_checkpoint(
                     {
                         "epoch": epoch,
@@ -705,6 +713,15 @@ def main():
                     ckpt_dir,
                     "best_checkpoint_VNetMH_sup.pth",
                 )
+
+            # giảm LR nếu cần (reduce on plateau)
+            maybe_reduce_lr_on_plateau(
+                optimizer,
+                cur_metric=cur_dice_struct,
+                lr_state=lr_state,
+                epoch=epoch,
+                wandb_run=wandb_run,
+            )
 
         # ---- Save last + snapshot ----
         save_checkpoint(
@@ -731,9 +748,6 @@ def main():
                 ckpt_dir,
                 f"epoch_{epoch:03d}_VNetMH_sup.pth",
             )
-
-        # ---- Giảm LR nếu tới mốc (50, 100, 150, ...) ----
-        maybe_adjust_lr(optimizer, epoch, wandb_run=wandb_run)
 
         dt = time.time() - t0
         msg = (
