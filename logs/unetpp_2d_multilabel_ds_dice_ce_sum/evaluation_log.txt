@@ -1,0 +1,3 @@
+[INFO] Logger initialized for evaluation. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\evaluation_log.txt
+[INFO] Đang tải model từ: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Bắt đầu inference trên 8680 lát cắt từ tập test...

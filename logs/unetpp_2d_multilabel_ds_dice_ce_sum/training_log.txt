@@ -1,0 +1,502 @@
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Training Configuration:
+[INFO] {
+  "data_root": "D:\\Project Advanced CV\\data\\processed\\2d\\labeled",
+  "config_dir": "D:\\Project Advanced CV\\configs\\splits_2d",
+  "ckpt_dir": "D:\\Project Advanced CV\\checkpoints\\unetpp_2d_multilabel_ds_dice_ce_sum",
+  "log_dir": "D:\\Project Advanced CV\\logs\\unetpp_2d_multilabel_ds_dice_ce_sum",
+  "num_epochs": 50,
+  "batch_size": 8,
+  "learning_rate": 0.0001,
+  "resize_to": [
+    128,
+    128
+  ],
+  "num_workers": 4,
+  "deep_supervision": true,
+  "resume_from": null
+}
+[INFO] Using device: cuda
+[INFO] Train samples: 39990, Val samples: 8525
+[INFO] UNet++ Deep Supervision: ON
+[INFO] Initialized DiceCELoss (Sum of Dice and Cross Entropy for Multi-Label)
+[INFO] Automatic Mixed Precision (AMP) enabled: True
+[INFO] 
+=== Epoch 1/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=1.0280 | Avg Dice=0.8040 | Avg IoU=0.7793
+[INFO] [TRAIN-WT] Dice=0.7324 | [TRAIN-TC] Dice=0.7167 | [TRAIN-ET] Dice=0.9630
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.8962 | Avg Dice=0.7885 | Avg IoU=0.7643
+[INFO] [VAL-WT]   Dice=0.6293 | [VAL-TC]   Dice=0.7361 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.7885, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_001.pth
+[INFO] 
+=== Epoch 2/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.8602 | Avg Dice=0.8334 | Avg IoU=0.8091
+[INFO] [TRAIN-WT] Dice=0.7349 | [TRAIN-TC] Dice=0.7653 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.8691 | Avg Dice=0.7861 | Avg IoU=0.7636
+[INFO] [VAL-WT]   Dice=0.6120 | [VAL-TC]   Dice=0.7463 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_002.pth
+[INFO] 
+=== Epoch 3/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.8508 | Avg Dice=0.8413 | Avg IoU=0.8174
+[INFO] [TRAIN-WT] Dice=0.7469 | [TRAIN-TC] Dice=0.7769 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.8701 | Avg Dice=0.8376 | Avg IoU=0.8157
+[INFO] [VAL-WT]   Dice=0.7449 | [VAL-TC]   Dice=0.7679 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.8376, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_003.pth
+[INFO] 
+=== Epoch 4/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.8113 | Avg Dice=0.8540 | Avg IoU=0.8304
+[INFO] [TRAIN-WT] Dice=0.7665 | [TRAIN-TC] Dice=0.7956 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.7862 | Avg Dice=0.8375 | Avg IoU=0.8160
+[INFO] [VAL-WT]   Dice=0.6960 | [VAL-TC]   Dice=0.8164 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_004.pth
+[INFO] 
+=== Epoch 5/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.7607 | Avg Dice=0.8605 | Avg IoU=0.8370
+[INFO] [TRAIN-WT] Dice=0.7660 | [TRAIN-TC] Dice=0.8154 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.7890 | Avg Dice=0.8697 | Avg IoU=0.8482
+[INFO] [VAL-WT]   Dice=0.8108 | [VAL-TC]   Dice=0.7982 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.8697, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_005.pth
+[INFO] 
+=== Epoch 6/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.7235 | Avg Dice=0.8646 | Avg IoU=0.8414
+[INFO] [TRAIN-WT] Dice=0.7766 | [TRAIN-TC] Dice=0.8172 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.7025 | Avg Dice=0.8717 | Avg IoU=0.8498
+[INFO] [VAL-WT]   Dice=0.8029 | [VAL-TC]   Dice=0.8121 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.8717, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_006.pth
+[INFO] 
+=== Epoch 7/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.6728 | Avg Dice=0.8744 | Avg IoU=0.8514
+[INFO] [TRAIN-WT] Dice=0.7913 | [TRAIN-TC] Dice=0.8320 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.6991 | Avg Dice=0.8700 | Avg IoU=0.8488
+[INFO] [VAL-WT]   Dice=0.7778 | [VAL-TC]   Dice=0.8321 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_007.pth
+[INFO] 
+=== Epoch 8/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.5295 | Avg Dice=0.8772 | Avg IoU=0.8542
+[INFO] [TRAIN-WT] Dice=0.7966 | [TRAIN-TC] Dice=0.8348 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.4170 | Avg Dice=0.8690 | Avg IoU=0.8471
+[INFO] [VAL-WT]   Dice=0.7845 | [VAL-TC]   Dice=0.8226 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_008.pth
+[INFO] 
+=== Epoch 9/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.3580 | Avg Dice=0.8775 | Avg IoU=0.8545
+[INFO] [TRAIN-WT] Dice=0.7973 | [TRAIN-TC] Dice=0.8351 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.2628 | Avg Dice=0.8981 | Avg IoU=0.8771
+[INFO] [VAL-WT]   Dice=0.8700 | [VAL-TC]   Dice=0.8242 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.8981, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_009.pth
+[INFO] 
+=== Epoch 10/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.2262 | Avg Dice=0.9249 | Avg IoU=0.9032
+[INFO] [TRAIN-WT] Dice=0.8866 | [TRAIN-TC] Dice=0.8882 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.2254 | Avg Dice=0.9136 | Avg IoU=0.8928
+[INFO] [VAL-WT]   Dice=0.8712 | [VAL-TC]   Dice=0.8696 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.9136, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_010.pth
+[INFO] 
+=== Epoch 11/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.2110 | Avg Dice=0.9297 | Avg IoU=0.9081
+[INFO] [TRAIN-WT] Dice=0.8928 | [TRAIN-TC] Dice=0.8963 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.2245 | Avg Dice=0.9158 | Avg IoU=0.8962
+[INFO] [VAL-WT]   Dice=0.8723 | [VAL-TC]   Dice=0.8750 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.9158, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_011.pth
+[INFO] 
+=== Epoch 12/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.2079 | Avg Dice=0.9317 | Avg IoU=0.9104
+[INFO] [TRAIN-WT] Dice=0.8962 | [TRAIN-TC] Dice=0.8989 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.2218 | Avg Dice=0.9125 | Avg IoU=0.8932
+[INFO] [VAL-WT]   Dice=0.8628 | [VAL-TC]   Dice=0.8748 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_012.pth
+[INFO] 
+=== Epoch 13/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.2061 | Avg Dice=0.9323 | Avg IoU=0.9110
+[INFO] [TRAIN-WT] Dice=0.8978 | [TRAIN-TC] Dice=0.8990 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.2280 | Avg Dice=0.9123 | Avg IoU=0.8920
+[INFO] [VAL-WT]   Dice=0.8673 | [VAL-TC]   Dice=0.8697 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_013.pth
+[INFO] 
+=== Epoch 14/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.2046 | Avg Dice=0.9338 | Avg IoU=0.9126
+[INFO] [TRAIN-WT] Dice=0.8991 | [TRAIN-TC] Dice=0.9021 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.2209 | Avg Dice=0.9148 | Avg IoU=0.8951
+[INFO] [VAL-WT]   Dice=0.8709 | [VAL-TC]   Dice=0.8735 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_014.pth
+[INFO] 
+=== Epoch 15/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.2030 | Avg Dice=0.9352 | Avg IoU=0.9140
+[INFO] [TRAIN-WT] Dice=0.9006 | [TRAIN-TC] Dice=0.9050 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.2258 | Avg Dice=0.9042 | Avg IoU=0.8869
+[INFO] [VAL-WT]   Dice=0.8405 | [VAL-TC]   Dice=0.8720 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_015.pth
+[INFO] 
+=== Epoch 16/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.1486 | Avg Dice=0.9356 | Avg IoU=0.9144
+[INFO] [TRAIN-WT] Dice=0.9022 | [TRAIN-TC] Dice=0.9046 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1168 | Avg Dice=0.9129 | Avg IoU=0.8936
+[INFO] [VAL-WT]   Dice=0.8708 | [VAL-TC]   Dice=0.8679 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_016.pth
+[INFO] 
+=== Epoch 17/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0954 | Avg Dice=0.9372 | Avg IoU=0.9159
+[INFO] [TRAIN-WT] Dice=0.9044 | [TRAIN-TC] Dice=0.9072 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1174 | Avg Dice=0.9111 | Avg IoU=0.8913
+[INFO] [VAL-WT]   Dice=0.8706 | [VAL-TC]   Dice=0.8628 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_017.pth
+[INFO] 
+=== Epoch 18/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0944 | Avg Dice=0.9378 | Avg IoU=0.9166
+[INFO] [TRAIN-WT] Dice=0.9054 | [TRAIN-TC] Dice=0.9080 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1118 | Avg Dice=0.9144 | Avg IoU=0.8952
+[INFO] [VAL-WT]   Dice=0.8690 | [VAL-TC]   Dice=0.8741 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_018.pth
+[INFO] 
+=== Epoch 19/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0930 | Avg Dice=0.9387 | Avg IoU=0.9176
+[INFO] [TRAIN-WT] Dice=0.9066 | [TRAIN-TC] Dice=0.9095 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1093 | Avg Dice=0.9164 | Avg IoU=0.8972
+[INFO] [VAL-WT]   Dice=0.8742 | [VAL-TC]   Dice=0.8749 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.9164, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_019.pth
+[INFO] 
+=== Epoch 20/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0918 | Avg Dice=0.9396 | Avg IoU=0.9185
+[INFO] [TRAIN-WT] Dice=0.9077 | [TRAIN-TC] Dice=0.9112 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1132 | Avg Dice=0.9146 | Avg IoU=0.8948
+[INFO] [VAL-WT]   Dice=0.8698 | [VAL-TC]   Dice=0.8739 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_020.pth
+[INFO] 
+=== Epoch 21/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0908 | Avg Dice=0.9403 | Avg IoU=0.9192
+[INFO] [TRAIN-WT] Dice=0.9081 | [TRAIN-TC] Dice=0.9130 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1144 | Avg Dice=0.9141 | Avg IoU=0.8943
+[INFO] [VAL-WT]   Dice=0.8691 | [VAL-TC]   Dice=0.8732 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_021.pth
+[INFO] 
+=== Epoch 22/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0898 | Avg Dice=0.9411 | Avg IoU=0.9200
+[INFO] [TRAIN-WT] Dice=0.9093 | [TRAIN-TC] Dice=0.9140 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1127 | Avg Dice=0.9166 | Avg IoU=0.8969
+[INFO] [VAL-WT]   Dice=0.8777 | [VAL-TC]   Dice=0.8721 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.9166, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_022.pth
+[INFO] 
+=== Epoch 23/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0879 | Avg Dice=0.9429 | Avg IoU=0.9219
+[INFO] [TRAIN-WT] Dice=0.9122 | [TRAIN-TC] Dice=0.9164 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1160 | Avg Dice=0.9137 | Avg IoU=0.8930
+[INFO] [VAL-WT]   Dice=0.8686 | [VAL-TC]   Dice=0.8724 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_023.pth
+[INFO] 
+=== Epoch 24/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0869 | Avg Dice=0.9435 | Avg IoU=0.9225
+[INFO] [TRAIN-WT] Dice=0.9136 | [TRAIN-TC] Dice=0.9169 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1108 | Avg Dice=0.9135 | Avg IoU=0.8941
+[INFO] [VAL-WT]   Dice=0.8682 | [VAL-TC]   Dice=0.8724 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_024.pth
+[INFO] 
+=== Epoch 25/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0863 | Avg Dice=0.9441 | Avg IoU=0.9232
+[INFO] [TRAIN-WT] Dice=0.9146 | [TRAIN-TC] Dice=0.9177 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1094 | Avg Dice=0.9146 | Avg IoU=0.8950
+[INFO] [VAL-WT]   Dice=0.8742 | [VAL-TC]   Dice=0.8696 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_025.pth
+[INFO] 
+=== Epoch 26/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0848 | Avg Dice=0.9455 | Avg IoU=0.9246
+[INFO] [TRAIN-WT] Dice=0.9167 | [TRAIN-TC] Dice=0.9199 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1144 | Avg Dice=0.9137 | Avg IoU=0.8939
+[INFO] [VAL-WT]   Dice=0.8720 | [VAL-TC]   Dice=0.8692 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_026.pth
+[INFO] 
+=== Epoch 27/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0840 | Avg Dice=0.9461 | Avg IoU=0.9253
+[INFO] [TRAIN-WT] Dice=0.9176 | [TRAIN-TC] Dice=0.9206 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1131 | Avg Dice=0.9122 | Avg IoU=0.8936
+[INFO] [VAL-WT]   Dice=0.8612 | [VAL-TC]   Dice=0.8754 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_027.pth
+[INFO] 
+=== Epoch 28/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0833 | Avg Dice=0.9464 | Avg IoU=0.9257
+[INFO] [TRAIN-WT] Dice=0.9178 | [TRAIN-TC] Dice=0.9215 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [VAL]   Loss=0.1096 | Avg Dice=0.9172 | Avg IoU=0.8975
+[INFO] [VAL-WT]   Dice=0.8778 | [VAL-TC]   Dice=0.8739 | [VAL-ET]   Dice=1.0000
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] New best Avg Val Dice: 0.9172, saved to D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\best_checkpoint.pth
+[INFO] Saved checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_028.pth
+[INFO] 
+=== Epoch 29/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] [TRAIN] Loss=0.0821 | Avg Dice=0.9473 | Avg IoU=0.9267
+[INFO] [TRAIN-WT] Dice=0.9196 | [TRAIN-TC] Dice=0.9224 | [TRAIN-ET] Dice=1.0000
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Training Configuration:
+[INFO] {
+  "data_root": "D:\\Project Advanced CV\\data\\processed\\2d\\labeled",
+  "config_dir": "D:\\Project Advanced CV\\configs\\splits_2d",
+  "ckpt_dir": "D:\\Project Advanced CV\\checkpoints\\unetpp_2d_multilabel_ds_dice_ce_sum",
+  "log_dir": "D:\\Project Advanced CV\\logs\\unetpp_2d_multilabel_ds_dice_ce_sum",
+  "num_epochs": 50,
+  "batch_size": 8,
+  "learning_rate": 0.0001,
+  "resize_to": [
+    128,
+    128
+  ],
+  "num_workers": 4,
+  "deep_supervision": true,
+  "resume_from": "D:\\Project Advanced CV\\checkpoints\\unetpp_2d_multilabel_ds_dice_ce_sum\\checkpoint_epoch_028.pth"
+}
+[INFO] Using device: cuda
+[INFO] Train samples: 39990, Val samples: 8525
+[INFO] UNet++ Deep Supervision: ON
+[INFO] Initialized DiceCELoss (Sum of Dice and Cross Entropy for Multi-Label)
+[INFO] Automatic Mixed Precision (AMP) enabled: True
+[INFO] Loaded checkpoint: D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_028.pth
+[INFO] Resumed from D:\Project Advanced CV\checkpoints\unetpp_2d_multilabel_ds_dice_ce_sum\checkpoint_epoch_028.pth at epoch 28
+[INFO] 
+=== Epoch 29/50 ===
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
+[INFO] Logger initialized. Log file: D:\Project Advanced CV\logs\unetpp_2d_multilabel_ds_dice_ce_sum\training_log.txt
