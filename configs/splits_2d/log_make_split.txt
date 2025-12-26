@@ -1,6 +1,6 @@
- - D:\Project Advanced CV\configs\splits_2d\train.txt
- - D:\Project Advanced CV\configs\splits_2d\val.txt
- - D:\Project Advanced CV\configs\splits_2d\test.txt
+- configs\splits_2d\train.txt
+ - configs\splits_2d\val.txt
+ - configs\splits_2d\test.txt
 [INFO] Summary: train=258 | val=55 | test=56 / total=369
 split  grade
 test   HGG       44
