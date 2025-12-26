@@ -424,7 +424,7 @@ if __name__ == "__main__":
         has_dropout=True,
     )
 
-    inputs = torch.randn(2, 4, 96, 96, 96)  # (B, C=4, D,H,W)
+    inputs = torch.randn(2, 4, 128, 128, 128)  # (B, C=4, D,H,W)
     with torch.no_grad():
         seg = model(inputs)
     print("seg:", seg.shape)  # expected: (2, 4, 96, 96, 96)

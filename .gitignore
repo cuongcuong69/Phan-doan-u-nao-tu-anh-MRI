@@ -5,8 +5,14 @@
 /data/processed/3d/*
 /wandb
 *.pth
+*.pt
 *.pkl
 *.tar
 /experiments/eda/
 /scripts/eda/
 /data/processed_task01/
+/data/processed/
+/data/BraST2020/
+/data/Task01_BrainTumour/
+trainers/__pycache__/*
+models/__pycache__/* 

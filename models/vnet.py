@@ -249,9 +249,9 @@ if __name__ == '__main__':
     # compute FLOPS & PARAMETERS
     from thop import profile, clever_format
     model = VNet(n_channels=4, n_classes=4)
-    inputs = torch.randn(2, 4, 96, 96, 96)  # (B,C,D,H,W)
+    inputs = torch.randn(2, 4, 128, 128, 128)  # (B,C,D,H,W)
     seg = model(inputs)
-    print("seg:", seg.shape)   # torch.Size([2, 4, 96, 96, 96])
+    print("seg:", seg.shape)   # seg: torch.Size([2, 4, 128, 128, 128])
     flops, params = profile(model, inputs=(inputs,))
     macs, params = clever_format([flops, params], "%.3f")
-    print("FLOPs/Params:", macs, params) # FLOPs/Params: 73.072G 9.445M
+    print("FLOPs/Params:", macs, params) # FLOPs/Params: 173.208G 9.445M

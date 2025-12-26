@@ -40,16 +40,17 @@ from medpy import metric
 # CONFIG
 # =============================================================================
 CFG_VIS: Dict[str, Any] = {
-    "CASE_ID": "Brain_011",
+    "CASE_ID": "Brain_091",
     "BASE_MODALITY": "flair",
 
     # Số lát sẽ vẽ / danh sách lát cố định
+
     "NUM_SLICES": 6,
-    "FIXED_SLICES": [i for i in range(60, 100, 5)],
+    "FIXED_SLICES": [88],
 
     # Đường dẫn tương đối (theo ROOT)
     "DATA_ROOT_3D": "data/processed/3d/labeled",
-    "PRED_ROOT": "experiments/brats3d_vnet_sup/inference/preds",
+    "PRED_ROOT": "experiments/brats3d_vnet_sup/inference_diceloss/preds",
     "OUT_DIR": "experiments/brats3d_vnet_sup/vis",
 
     # Kích thước figure cho 4x2 subplot (tăng lên để ảnh to hơn)
