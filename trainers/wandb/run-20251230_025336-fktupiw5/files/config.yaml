@@ -1,0 +1,161 @@
+_wandb:
+    value:
+        cli_version: 0.21.1
+        e:
+            anmvl8oah5fzz0cnbd2003vyp6pa7fmx:
+                codePath: trainers\train_uctransnet2d.py
+                codePathLocal: train_uctransnet2d.py
+                cpu_count: 8
+                cpu_count_logical: 16
+                cudaVersion: "12.3"
+                disk:
+                    /:
+                        total: "268434403328"
+                        used: "233246253056"
+                email: lemanhcuong6904@gmail.com
+                executable: C:\Users\ADMIN\AppData\Local\Programs\Python\Python311\python.exe
+                git:
+                    commit: b82aaaad92fadd898cc8b66c11126495140b7aee
+                    remote: https://github.com/cuongcuong69/Phan-doan-u-nao-tu-anh-MRI.git
+                gpu: NVIDIA GeForce RTX 4060 Laptop GPU
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ada
+                      cudaCores: 3072
+                      memoryTotal: "8585740288"
+                      name: NVIDIA GeForce RTX 4060 Laptop GPU
+                      uuid: GPU-0c327d6f-103f-a828-5173-992f6c06bbbc
+                host: LAPTOP-2PI1D10A
+                memory:
+                    total: "16312721408"
+                os: Windows-10-10.0.26100-SP0
+                program: D:\Project Advanced CV\trainers\train_uctransnet2d.py
+                python: CPython 3.11.9
+                root: D:\Project Advanced CV\trainers
+                startedAt: "2025-12-29T19:53:36.561944Z"
+                writerId: anmvl8oah5fzz0cnbd2003vyp6pa7fmx
+        m: []
+        python_version: 3.11.9
+        t:
+            "1":
+                - 1
+                - 105
+            "2":
+                - 1
+                - 49
+                - 80
+                - 105
+            "3":
+                - 13
+                - 15
+                - 16
+            "4": 3.11.9
+            "5": 0.21.1
+            "8":
+                - 3
+            "12": 0.21.1
+            "13": windows-amd64
+RESUME_CKPT:
+    value: ""
+RESUME_WEIGHTS:
+    value: ""
+RESUME_WEIGHTS_STRICT:
+    value: false
+amp:
+    value: true
+batch_size:
+    value: 8
+betas:
+    value:
+        - 0.9
+        - 0.999
+detect_anomaly:
+    value: false
+dice_fp32:
+    value: true
+dice_include_background:
+    value: false
+dice_smooth:
+    value: 1e-05
+epochs:
+    value: 30
+grad_clip_norm:
+    value: 0.5
+image_size:
+    value: 256
+in_chans:
+    value: 4
+log_debug_every_steps:
+    value: 50
+log_images_every:
+    value: 1
+loss_ce_weight:
+    value: 1
+loss_dice_weight:
+    value: 1
+lr:
+    value: 0.0005
+max_log_images:
+    value: 60
+min_lr:
+    value: 1e-06
+model:
+    value:
+        activation: ReLU
+        base_channels: 64
+        ctrans_depth: 4
+        dropout: 0.1
+        img_size: 256
+        patch_size:
+            - 16
+            - 8
+            - 4
+            - 2
+        vis: false
+num_classes:
+    value: 4
+num_workers_test:
+    value: 4
+num_workers_train:
+    value: 4
+num_workers_val:
+    value: 4
+out_dir:
+    value: D:\Project Advanced CV\experiments\uctransnet2d
+pin_memory:
+    value: true
+save_best_by:
+    value: val/dice_struct
+save_every_epochs:
+    value: 5
+scheduler:
+    value: warmup_cosine
+seed:
+    value: 2025
+test_batch_size:
+    value: 8
+use_small_rotate:
+    value: false
+val_batch_size:
+    value: 8
+wandb:
+    value: true
+wandb_entity:
+    value: null
+wandb_project:
+    value: AdvancedCV-UCTransNet2D
+wandb_run_name:
+    value: uctransnet2d_256_ce_dice_nanfix_albu2d
+wandb_tags:
+    value:
+        - uctransnet
+        - 2d
+        - brats2020
+        - ce+dice
+        - nan-fix
+        - warmup+cosine
+        - albumentations
+warmup_epochs:
+    value: 3
+weight_decay:
+    value: 0.0001

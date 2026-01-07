@@ -7,9 +7,9 @@
 |-----------------------|-----------------------------------------------------------------------------------------|
 | **Lê Mạnh Cương**     | - Tiền xử lý dữ liệu   
 |                       | - Thống kê và phân tích dữ liệu (EDA)  
-|                       | - Mô hình **VNet**                                                             |
-| **Nguyễn Tuấn Anh**   | - Mô hình **UNet**                                               |
-| **Phạm Quý Đô**       | - Mô hình **UNet++**                                             |
+|                       | - Mô hình **VNet, Swin UNet3D**                                                             |
+| **Nguyễn Tuấn Anh**   | - Mô hình **UNet, TransUNet**                                               |
+| **Phạm Quý Đô**       | - Mô hình **UNet++, UNetr**                                             |
 
 ---
 
@@ -21,18 +21,19 @@
 ---
 
 
-## Cấu trúc thư mục chính
-- `configs/`: cấu hình split dataset. `configs/splits_2d` chứa `train.txt`, `val.txt`, `test.txt` cùng bản JSON/CSV thống kê; `configs/splits_task01/test.txt` cho bộ Task01_BrainTumour.
-- `data/`: dữ liệu thô và tiền xử lý. Bao gồm `BraST2020/`, `Task01_BrainTumour/`, kết quả tiền xử lý `processed/` (3D & 2D) và `processed_task01/`. Hai dataloader chính: `data/dataloader_brats3d_sup.py` (patch-based) và `data/dataloader_brats3d_full.py` (full-volume).
-- `experiments/`: nơi lưu checkpoints, log, ảnh trực quan và kết quả inference cho từng thí nghiệm (ví dụ `brats3d_vnet_sup`, `brats3d_vnet_sup_fullvolume`, `brats3d_vnetmh_sup`, `brats3d_vnet_multienc_sup`, `task01_vnet`). Thư mục `eda/` chứa kết quả phân tích thống kê.
-- `inference/`: script suy luận cho từng biến thể VNet (`infer_vnet_brats3d.py`, `infer_vnetmh_brats3d.py`, `infer_vnet_multienc_brats3d.py`, `inference_vnet_brats3d_fullvolume.py`).
-- `losses/`: triển khai hàm mất mát, metrics và ramp scheduler (`losses.py`, `losses_2.py`, `composite.py`, `metrics.py`, `ramps.py`).
-- `models/`: định nghĩa model VNet 3D (`vnet.py`), VNet multi-head (`vnet_multihead.py`) và multi-encoder fusion (`vnet_multi_enc_fusion.py`).
-- `notebooks/`: notebook phục vụ log và trực quan (`log.ipynb`, `test.ipynb`, `visualize_inference_3d.ipynb`).
-- `scripts/`: tiện ích tiền xử lý, chia tập và EDA. Thư mục con `scripts/eda/` chứa các phân tích thống kê (cohort, intensity, radiomics, shape).
-- `trainers/`: kịch bản huấn luyện chính cho các biến thể VNet (supervised patch/full-volume, multi-head, multi-encoder).
-- `wandb/`: log offline/online của Weights & Biases cho các lần chạy.
-- `requirements.txt`: danh sách package cần thiết.
+## Cách tổ chức các thư mục
+- `configs/`: cấu hình split dữ liệu; `configs/splits_2d/` có `train.txt`, `val.txt`, `test.txt`, `train_small.txt` và file `splits.csv/json`; `configs/splits_task01/test.txt` cho Task01.
+- `data/`: dữ liệu thô và đã tiền xử lý (`BraST2020/`, `processed/`, `processed_task01/`); dataloader 2D/3D: `dataloader_brats3d_sup.py`, `dataloader_brats3d_full.py`, `dataloader_brats3d_task01_sup.py`, `dataloader_brats2d.py`, `dataloader_2d.py`.
+- `experiments/`: kết quả theo từng `EXP_NAME` (checkpoint, log, metrics, ảnh trực quan, inference); có `experiments/eda/` và các thư mục `vis_*`.
+- `inference/`: kịch bản suy luận VNet & Swin-UNet 3D; `inference/experiments/` dùng lưu thử nghiệm 2D.
+- `losses/`: loss/metrics & tiện ích (`losses.py`, `losses_2.py`, `metrics.py`, `composite.py`, `functional.py`, `util.py`, `ramps.py`).
+- `models/`: kiến trúc VNet 3D, multi-head, multi-encoder và Swin-UNet 3D (`vnet.py`, `vnet_multihead.py`, `vnet_multi_enc_fusion.py`, `swin_unet_3d.py`).
+- `scripts/`: tiền xử lý, tạo split và EDA; `scripts/eda/` chứa các thống kê; `visualize_vnetmh_results.py` trực quan kết quả multi-head.
+- `trainers/`: kịch bản huấn luyện VNet 3D và Swin-UNet 3D (`train_vnet_brats3d_sup.py`, `train_vnet_full.py`, `train_vnetmh_brats3d_sup.py`, `train_vnet_multienc_brats3d_sup.py`, `train_swin_unet3d_patch.py`).
+- `notebooks/`: thực nghiệm/ghi chú (UNet 2D, UNet++ 2D, trực quan 3D).
+- `logs/`: log/metrics xuất từ các thực nghiệm 2D.
+- `wandb/` và `trainers/wandb/`: log offline/online W&B.
+- `requirements.txt`: danh sách package.
 
 ## Dữ liệu & tiền xử lý
 - Đầu vào BraTS 2020 nằm ở `data/BraST2020/BraTS2020_TrainingData` và `.../BraTS2020_ValidationData`. Bộ Task01_BrainTumour nằm ở `data/Task01_BrainTumour`.
@@ -51,26 +52,21 @@
 - `scripts/make_split.py`: tạo split 70/15/15 cho dữ liệu 2D BraTS đã tiền xử lý. Stratify theo Grade (từ `name_mapping.csv`), sự hiện diện vùng ET và kích thước khối u. Đầu ra: `configs/splits_2d/{train,val,test}.txt`, `splits.csv`, `splits.json`, kèm log `log_make_split.txt`.
 - `configs/splits_task01/test.txt`: danh sách test cho bộ Task01_BrainTumour (dùng chung cho 2D/3D).
 
-## Huấn luyện (trainers/)
-- `trainers/train_vnet_brats3d_sup.py`: huấn luyện VNet 3D patch-based với `data/dataloader_brats3d_sup.py`. Cấu hình trong `CFG` (patch size, batch, loss CE/Dice/DiceCE, giảm LR on plateau, eval Dice WT/TC/ET). Checkpoint, log và ảnh trực quan lưu tại `experiments/brats3d_vnet_sup/` (các biến thể loss: `checkpoints_diceloss`, `checkpoints_celoss`).
-- `trainers/train_vnet_full.py`: huấn luyện VNet 3D trên full-volume resize (default 128x128x128) với `data/dataloader_brats3d_full.py`. Kết quả lưu `experiments/brats3d_vnet_sup_fullvolume/`.
-- `trainers/train_vnetmh_brats3d_sup.py`: VNet multi-head dự đoán WT/TC/ET (3 head nhánh). Log/ckpt tại `experiments/brats3d_vnetmh_sup/`.
-- `trainers/train_vnet_multienc_brats3d_sup.py`: VNet multi-encoder fusion (nhiều encoder ghép feature). Kết quả trong `experiments/brats3d_vnet_multienc_sup/`.
-- Mỗi trainer dùng `CFG["EXP_NAME"]` để định tên thư mục lưu checkpoint/log. Chạy trực tiếp: `python trainers/train_vnet_brats3d_sup.py` (sửa `CFG` nếu cần đường dẫn, batch, loss, scheduler, resume).
-
-## Suy luận & trực quan (inference/)
-- `inference/infer_vnet_brats3d.py`: suy luận cho mô hình patch-based VNet chuẩn. Đọc `configs/splits_2d/test.txt`, load ckpt từ `experiments/brats3d_vnet_sup/...`, xuất NIfTI/PNG overlay và CSV metrics vào `experiments/brats3d_vnet_sup/inference`.
-- `inference/inference_vnet_brats3d_fullvolume.py`: suy luận full-volume (resize → forward → resize ngược). Config `CFG_INFER` điều chỉnh `VOLUME_SIZE`, `TEST_LIST`, `CKPT_NAME`, `OUT_DIR`.
-- `inference/infer_vnetmh_brats3d.py`: suy luận mô hình multi-head (WT/TC/ET), tính Dice/IoU/ASD/HD95 từng vùng, lưu vào `experiments/brats3d_vnetmh_sup/inference`.
-- `inference/infer_vnet_multienc_brats3d.py`: suy luận mô hình multi-encoder fusion.
-- Script `scripts/visualize_vnetmh_results.py` dựng grid ảnh overlay dự đoán/GT cho các checkpoint multi-head.
-- Ảnh trực quan mẫu nằm trong `experiments/vis_brats3d_sup/` và `experiments/vis_brats3d_full/`.
+## Kịch bản thực nghiệm
+- Tất cả script dùng `CFG`/`CFG_INFER`; kết quả lưu theo `experiments/<EXP_NAME>/...` (checkpoints, inference, metrics, hình ảnh).
+- VNet 3D patch-based: `trainers/train_vnet_brats3d_sup.py` + `inference/infer_vnet_brats3d.py`.
+- VNet 3D full-volume: `trainers/train_vnet_full.py` + `inference/inference_vnet_brats3d_fullvolume.py`.
+- VNet 3D multi-head: `trainers/train_vnetmh_brats3d_sup.py` + `inference/infer_vnetmh_brats3d.py`; trực quan bằng `scripts/visualize_vnetmh_results.py`.
+- VNet 3D multi-encoder: `trainers/train_vnet_multienc_brats3d_sup.py` + `inference/infer_vnet_multienc_brats3d.py`.
+- Swin-UNet 3D patch-based: `trainers/train_swin_unet3d_patch.py` + `inference/infer_swin_unet3d.py` (TTA tùy chọn).
+- UNet/UNet++ 2D chạy qua notebook: `notebooks/unet2d_brats20_final.ipynb`, `notebooks/unetpp_2d/unetpp_2d_diceloss_celoss.ipynb`; log trong `logs/`.
 
 ## Model, loss, metric
 - Model:
   - `models/vnet.py`: VNet 3D cơ bản (tùy chọn batch/group/instance norm, dropout).
   - `models/vnet_multihead.py`: encoder/decoder chung, 3 head WT/TC/ET (mỗi head 2-class).
   - `models/vnet_multi_enc_fusion.py`: nhiều encoder cho từng modality, trộn feature trước decoder.
+  - `models/swin_unet_3d.py`: Swin-UNet 3D (backbone transformer theo cửa sổ), dùng cho huấn luyện patch-based.
 - Loss & metric:
   - `losses/losses.py`, `losses/losses_2.py`: Dice, Cross-Entropy, DiceCE, các biến thể có trọng số.
   - `losses/composite.py`: helper kết hợp loss/regularizer.

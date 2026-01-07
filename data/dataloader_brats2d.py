@@ -48,7 +48,7 @@ import albumentations as A
 # SELF-TEST CONFIG
 # =============================================================================
 SELFTEST_SEED = 2025
-SELFTEST_SIZE = 224
+SELFTEST_SIZE = 256
 SELFTEST_BATCH = 8
 SELFTEST_NUM_WORKERS = 0
 # =============================================================================

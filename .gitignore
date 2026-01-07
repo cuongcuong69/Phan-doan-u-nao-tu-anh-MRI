@@ -51,14 +51,14 @@ Thumbs.db
 
 # Others
 *.tar
-/experiments/eda/
+experiments
 /scripts/eda/
 /data/processed_task01/
-<<<<<<< HEAD
+
 /data/processed/
 /data/BraST2020/
 /data/Task01_BrainTumour/
 trainers/__pycache__/*
 models/__pycache__/* 
-=======
->>>>>>> 595fad057db2bf2ef7cf1f6ea613fb6a7542ae77
+
+

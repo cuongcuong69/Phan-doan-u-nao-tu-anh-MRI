@@ -86,12 +86,11 @@ def load_nii_to_DHW(path: str) -> np.ndarray:
     theo NORM_MODE: 'minmax' hoặc 'zscore').
     """
     img = nib.load(path)
-    data = img.get_fdata().astype(np.float32)  # (X,Y,Z)
-    if data.ndim != 3:
-        raise ValueError(f"Expected 3D volume, got shape={data.shape} at {path}")
-    # transpose (X,Y,Z) -> (Z,Y,X) = (D,H,W)
-    data = np.transpose(data, (2, 1, 0))
+    data = img.get_fdata(dtype=np.float32)  # <-- quan trọng: đọc thẳng float32
+    data = np.transpose(data, (2, 1, 0)).astype(np.float32, copy=False)
     return data
+
+    
 
 
 def _resize_volume_3d(
@@ -427,7 +426,7 @@ def build_brats3d_full_train_loader(
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=False,
         drop_last=True,
     )
     return loader
@@ -457,7 +456,7 @@ def build_brats3d_full_val_loader(
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=False,
         drop_last=False,
     )
     return loader
@@ -487,7 +486,7 @@ def build_brats3d_full_test_loader(
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=False,
         drop_last=False,
     )
     return loader
