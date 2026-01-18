@@ -5,6 +5,7 @@
 /data/processed/3d/*
 
 # Model checkpoints and weights
+checkpoints/
 *.ckpt
 *.pth
 *.pt

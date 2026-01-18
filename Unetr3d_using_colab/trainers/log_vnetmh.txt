@@ -1,0 +1,21 @@
+Run summary:
+wandb:                lr 0.00013
+wandb:          lr/epoch 200
+wandb:          train/ce 0.20698
+wandb:     train/dice_et 0.7704
+wandb:   train/dice_loss 0.1833
+wandb:     train/dice_tc 0.79279
+wandb:     train/dice_wt 0.8869
+wandb:       train/epoch 200
+wandb:        train/loss 0.39028
+wandb:            val/ce 0.09444
+wandb:       val/dice_et 0.77443
+wandb:     val/dice_loss 0.19473
+wandb:       val/dice_tc 0.81508
+wandb:       val/dice_wt 0.82629
+wandb:         val/epoch 198
+wandb:          val/loss 0.28917
+wandb: val/mean_dice_all 0.80527
+
+wandb:  View run brats3d_vnetmh_sup at: https://wandb.ai/lemanhcuong6904-hus-vnu/brats2020-vnet3d-multihead/runs/074ukpkv
+wandb:  View project at: https://wandb.ai/lemanhcuong6904-hus-vnu/brats2020-vnet3d-multihead
