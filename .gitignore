@@ -63,3 +63,5 @@ trainers/__pycache__/*
 models/__pycache__/* 
 
 
+trainers/wandb/*
+
